@@ -34,6 +34,22 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles bad argument errors (e.g. invalid user ID, card already matched/flipped).
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(new ErrorResponse(ex.getMessage()));
+    }
+
+    /**
+     * Handles illegal game state errors (e.g. session not active, cannot resume/pause).
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.badRequest().body(new ErrorResponse(ex.getMessage()));
+    }
+
+    /**
      * Catch-all for any unexpected exception so the client still gets JSON.
      */
     @ExceptionHandler(Exception.class)
