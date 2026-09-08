@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memory Match Arcade | Master Your Memory</title>
+  <meta name="description" content="A modern cyber-arcade memory card matching game powered by a Spring Boot REST backend." />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Header / Navbar -->
+    <header class="app-header">
+      <div class="logo-group" id="btn-nav-menu">
+        <span class="logo-icon">🎴</span>
+        <span class="logo-title">MemoryMatch Arcade</span>
+      </div>
+
+      <div class="header-controls">
+        <button id="btn-toggle-sound" class="btn btn-secondary" title="Toggle Sound FX">🔊 Sound: ON</button>
+        <button id="btn-toggle-music" class="btn btn-secondary" title="Toggle Background Music">🔇 Music: OFF</button>
+        
+        <div id="user-badge-container" class="user-badge" style="display: none;" title="Click to view player profile">
+          <span>👤</span>
+          <span id="user-display-name">Player</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Screen 1: Authentication (Login / Register) -->
+    <main id="auth-screen" class="screen">
+      <div class="glass-panel">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="font-size: 3rem; margin-bottom: 8px;">✨🎴✨</div>
+          <h1 style="font-family: var(--font-display); font-size: 1.8rem; margin-bottom: 6px;">Welcome, Challenger!</h1>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">Log in or create an account to track high scores & progress.</p>
+        </div>
+
+        <div class="auth-tabs">
+          <button id="tab-login" class="auth-tab active">Log In</button>
+          <button id="tab-register" class="auth-tab">Register</button>
+        </div>
+
+        <!-- Login Form -->
+        <div id="container-login" class="auth-form-container active">
+          <form id="form-login">
+            <div class="form-group">
+              <label for="login-username">Username</label>
+              <input type="text" id="login-username" placeholder="e.g. shadow_ninja" required autocomplete="username" />
+            </div>
+            <div class="form-group">
+              <label for="login-password">Password</label>
+              <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password" />
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+              🚀 Enter Arcade
+            </button>
+          </form>
+        </div>
+
+        <!-- Register Form -->
+        <div id="container-register" class="auth-form-container">
+          <form id="form-register">
+            <div class="form-group">
+              <label for="reg-username">Username</label>
+              <input type="text" id="reg-username" placeholder="e.g. shadow_ninja" required autocomplete="username" />
+            </div>
+            <div class="form-group">
+              <label for="reg-display-name">Display Name (Optional)</label>
+              <input type="text" id="reg-display-name" placeholder="e.g. Shadow Ninja" />
+            </div>
+            <div class="form-group">
+              <label for="reg-password">Password (min 6 chars)</label>
+              <input type="password" id="reg-password" placeholder="••••••••" required minlength="6" autocomplete="new-password" />
+            </div>
+            <button type="submit" class="btn btn-accent" style="width: 100%; margin-top: 10px;">
+              ✨ Create Account
+            </button>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <!-- Screen 2: Main Menu / New Game Setup -->
+    <main id="menu-screen" class="screen">
+      <div class="glass-panel">
+        <div style="text-align: center; margin-bottom: 28px;">
+          <h1 style="font-family: var(--font-display); font-size: 2.2rem; margin-bottom: 6px;">Choose Your Challenge</h1>
+          <p style="color: var(--text-muted);">Select grid difficulty and thematic deck to start playing.</p>
+        </div>
+
+        <!-- Difficulty Selection -->
+        <div class="menu-section">
+          <div class="section-title">⚡ 1. Select Grid Difficulty</div>
+          <div class="option-grid">
+            <div class="option-card difficulty-option selected" data-diff="EASY">
+              <div class="option-icon">🟢</div>
+              <div class="option-label">Easy</div>
+              <div class="option-sub">4 × 4 (8 Pairs)</div>
+            </div>
+            <div class="option-card difficulty-option" data-diff="MEDIUM">
+              <div class="option-icon">🟡</div>
+              <div class="option-label">Medium</div>
+              <div class="option-sub">6 × 6 (18 Pairs)</div>
+            </div>
+            <div class="option-card difficulty-option" data-diff="HARD">
+              <div class="option-icon">🔴</div>
+              <div class="option-label">Hard</div>
+              <div class="option-sub">8 × 8 (32 Pairs)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Theme Selection -->
+        <div class="menu-section">
+          <div class="section-title">🎨 2. Choose Card Theme</div>
+          <div class="option-grid">
+            <div class="option-card theme-option selected" data-theme="animals">
+              <div class="option-icon">🦁</div>
+              <div class="option-label">Animals</div>
+              <div class="option-sub">Safari & Pets</div>
+            </div>
+            <div class="option-card theme-option" data-theme="fruits">
+              <div class="option-icon">🍓</div>
+              <div class="option-label">Fruits & Food</div>
+              <div class="option-sub">Sweet Treats</div>
+            </div>
+            <div class="option-card theme-option" data-theme="space">
+              <div class="option-icon">🚀</div>
+              <div class="option-label">Deep Space</div>
+              <div class="option-sub">Cosmic Planets</div>
+            </div>
+            <div class="option-card theme-option" data-theme="flags">
+              <div class="option-icon">🚩</div>
+              <div class="option-label">World Flags</div>
+              <div class="option-sub">Global Flags</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Game Launch Actions -->
+        <div style="display: flex; gap: 16px; justify-content: center; margin-top: 36px; flex-wrap: wrap;">
+          <button id="btn-start-game" class="btn btn-primary" style="font-size: 1.1rem; padding: 14px 32px;">
+            🎮 Start Match
+          </button>
+          <button id="btn-resume-game" class="btn btn-accent" style="display: none; font-size: 1.1rem; padding: 14px 28px;">
+            ▶ Resume Saved Game
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Screen 3: Game Arena (Board + HUD) -->
+    <main id="game-screen" class="screen">
+      <div class="game-arena">
+        <!-- HUD Header -->
+        <div class="game-hud">
+          <div class="hud-stat-group">
+            <div class="hud-stat">
+              <span class="stat-label">Moves</span>
+              <span id="hud-moves" class="stat-value">0</span>
+            </div>
+            <div class="hud-stat">
+              <span class="stat-label">Time</span>
+              <span id="hud-timer" class="stat-value">00:00</span>
+            </div>
+            <div class="hud-stat">
+              <span class="stat-label">Hints</span>
+              <span id="hud-hints" class="stat-value">0</span>
+            </div>
+            <div class="hud-stat">
+              <span class="stat-label">Score</span>
+              <span id="hud-score" class="stat-value" style="color: var(--accent-gold);">0</span>
+            </div>
+          </div>
+
+          <div class="hud-actions">
+            <button id="btn-hint" class="btn btn-warning" title="Reveal matching pair (-50 pts)">💡 Hint</button>
+            <button id="btn-pause-game" class="btn btn-secondary">⏸ Pause</button>
+            <button id="btn-restart-game" class="btn btn-secondary" title="Reshuffle current board">🔄 Restart</button>
+            <button id="btn-save-game" class="btn btn-secondary" title="Save game state">💾 Save</button>
+            <button id="btn-back-to-menu" class="btn btn-secondary" title="Exit to main menu">🏠 Menu</button>
+          </div>
+        </div>
+
+        <!-- Status Message Banner -->
+        <div id="status-banner" class="status-banner">
+          Click any card to start matching!
+        </div>
+
+        <!-- 3D Card Board Container -->
+        <div class="board-container">
+          <div id="board-grid" class="board-grid easy">
+            <!-- Dynamic 3D Card tiles generated here -->
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Screen 4: Player Profile & High Scores -->
+    <main id="profile-screen" class="screen">
+      <div class="glass-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <h1 style="font-family: var(--font-display); font-size: 1.8rem;">Player Profile</h1>
+          <div style="display: flex; gap: 10px;">
+            <button id="btn-profile-back" class="btn btn-secondary">⬅ Back to Menu</button>
+            <button id="btn-logout" class="btn btn-danger">🚪 Log Out</button>
+          </div>
+        </div>
+
+        <div class="profile-card">
+          <!-- Left Avatar / Overview -->
+          <div class="profile-avatar-section">
+            <div class="profile-avatar" id="prof-avatar-letter">P</div>
+            <h2 id="prof-username" style="font-family: var(--font-display); font-size: 1.4rem;">Username</h2>
+            <div style="color: var(--text-muted); font-size: 0.9rem;">
+              Member Since: <span id="prof-member-since" style="color: #fff;">-</span>
+            </div>
+            <div style="color: var(--text-muted); font-size: 0.9rem;">
+              Total Matches: <span id="prof-games-played" style="color: var(--accent-cyan); font-weight: 700;">0</span>
+            </div>
+          </div>
+
+          <!-- Right Edit Form -->
+          <div>
+            <h3 style="font-family: var(--font-display); margin-bottom: 16px;">Preferences</h3>
+            <form id="form-profile">
+              <div class="form-group">
+                <label for="prof-display-name-input">Display Name</label>
+                <input type="text" id="prof-display-name-input" placeholder="Your in-game name" />
+              </div>
+              <div class="form-group">
+                <label for="prof-theme-select">Preferred Deck Theme</label>
+                <select id="prof-theme-select">
+                  <option value="animals">🦁 Animals & Wildlife</option>
+                  <option value="fruits">🍓 Fruits & Delicious Food</option>
+                  <option value="space">🚀 Deep Space Cosmos</option>
+                  <option value="flags">🚩 World Flags</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary" style="margin-top: 8px;">
+                💾 Save Profile Changes
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- High Score History -->
+        <div class="scores-table-container">
+          <h3 style="font-family: var(--font-display); margin-bottom: 12px; margin-top: 32px;">🏆 Match History & High Scores</h3>
+          <table class="scores-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Difficulty</th>
+                <th>Score</th>
+                <th>Moves</th>
+                <th>Time</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="scores-table-body">
+              <!-- Populated dynamically from /api/scores/{userId} -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Memory Match Arcade • Powered by Spring Boot REST API & Vanilla Web Technologies</p>
+    </footer>
+  </div>
+
+  <!-- Win Modal Dialog -->
+  <div id="win-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-trophy">🏆</div>
+      <h2 class="modal-title">Victory!</h2>
+      <p class="modal-subtitle">You matched all pairs in style!</p>
+
+      <div class="win-stats-grid">
+        <div class="win-stat-card">
+          <div class="win-stat-label">Final Score</div>
+          <div id="win-stat-score" class="win-stat-value" style="color: var(--accent-gold);">0</div>
+        </div>
+        <div class="win-stat-card">
+          <div class="win-stat-label">Moves</div>
+          <div id="win-stat-moves" class="win-stat-value">0</div>
+        </div>
+        <div class="win-stat-card">
+          <div class="win-stat-label">Time</div>
+          <div id="win-stat-time" class="win-stat-value">00:00</div>
+        </div>
+      </div>
+
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 24px;">
+        Difficulty: <span id="win-stat-diff" style="color: #fff; font-weight: 600;">EASY</span> • Hints Used: <span id="win-stat-hints" style="color: #fff; font-weight: 600;">0</span>
+      </div>
+
+      <div class="modal-buttons">
+        <button id="btn-play-again" class="btn btn-primary">🔄 Play Again</button>
+        <button id="btn-win-menu" class="btn btn-secondary">🏠 Main Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- JavaScript Modules in Proper Dependency Order -->
+  <script src="js/api.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

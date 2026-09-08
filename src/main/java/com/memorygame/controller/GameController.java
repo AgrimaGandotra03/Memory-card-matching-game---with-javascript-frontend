@@ -31,10 +31,10 @@ public class GameController {
     }
 
     /**
-     * POST /api/game/start
+     * POST /api/game/start or POST /api/game/new
      * Body: { "userId": 1, "difficulty": "EASY", "theme": "animals" }
      */
-    @PostMapping("/start")
+    @PostMapping({"/start", "/new"})
     public ResponseEntity<GameSessionResponse> startNewGame(@Valid @RequestBody StartGameRequest request) {
         GameSessionResponse response = gameService.startNewGame(
                 request.getUserId(),
