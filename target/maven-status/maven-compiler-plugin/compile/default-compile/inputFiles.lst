@@ -1,0 +1,16 @@
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\config\CorsConfig.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\config\SecurityConfig.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\controller\AuthController.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\controller\GlobalExceptionHandler.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\controller\ProfileController.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\dto\AuthRequest.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\dto\AuthResponse.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\dto\ErrorResponse.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\dto\ProfileResponse.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\dto\ProfileUpdateRequest.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\MemoryGameApplication.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\model\PlayerProfile.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\model\User.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\repository\PlayerProfileRepository.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\repository\UserRepository.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\src\main\java\com\memorygame\service\AuthService.java

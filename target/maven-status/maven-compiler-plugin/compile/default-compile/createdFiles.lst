@@ -1,0 +1,16 @@
+com\memorygame\dto\ProfileUpdateRequest.class
+com\memorygame\repository\PlayerProfileRepository.class
+com\memorygame\dto\ErrorResponse.class
+com\memorygame\model\PlayerProfile.class
+com\memorygame\service\AuthService.class
+com\memorygame\controller\GlobalExceptionHandler.class
+com\memorygame\config\CorsConfig.class
+com\memorygame\controller\AuthController.class
+com\memorygame\dto\AuthResponse.class
+com\memorygame\config\SecurityConfig.class
+com\memorygame\controller\ProfileController.class
+com\memorygame\dto\AuthRequest.class
+com\memorygame\dto\ProfileResponse.class
+com\memorygame\MemoryGameApplication.class
+com\memorygame\model\User.class
+com\memorygame\repository\UserRepository.class
