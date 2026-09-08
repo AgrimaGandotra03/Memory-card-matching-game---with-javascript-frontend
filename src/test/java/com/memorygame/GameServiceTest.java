@@ -36,6 +36,9 @@ class GameServiceTest {
     @Autowired
     private ScoreRecordRepository scoreRepository;
 
+    @Autowired
+    private PlayerProfileRepository profileRepository;
+
     private User testUser;
 
     @BeforeEach
@@ -174,5 +177,20 @@ class GameServiceTest {
         } catch (Exception e) {
             fail("Exception during board solving: " + e.getMessage());
         }
+    }
+
+    @Test
+    void testProfileFetch_NoLazyInitializationException() {
+        PlayerProfile profile = new PlayerProfile(testUser);
+        profile.setDisplayName("Test Player");
+        profile.setPreferredTheme("space");
+        profile = profileRepository.save(profile);
+
+        PlayerProfile fetched = profileRepository.findByUserId(testUser.getId()).orElseThrow();
+        assertNotNull(fetched);
+        assertNotNull(fetched.getUser());
+        assertEquals(testUser.getUsername(), fetched.getUser().getUsername());
+        assertEquals("Test Player", fetched.getDisplayName());
+        assertEquals("space", fetched.getPreferredTheme());
     }
 }

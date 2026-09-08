@@ -9,6 +9,7 @@ import com.memorygame.repository.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.format.DateTimeFormatter;
@@ -44,6 +45,7 @@ public class ProfileController {
      * Not found (404): { "error": "No profile found for userId 99" }
      */
     @GetMapping("/{userId}")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getProfile(@PathVariable Long userId) {
         return profileRepository.findByUserId(userId)
                 .map(profile -> {
@@ -63,6 +65,7 @@ public class ProfileController {
      * Not found (404): { "error": "..." }
      */
     @PutMapping("/{userId}")
+    @Transactional
     public ResponseEntity<?> updateProfile(@PathVariable Long userId,
                                            @Valid @RequestBody ProfileUpdateRequest request) {
         return profileRepository.findByUserId(userId)
