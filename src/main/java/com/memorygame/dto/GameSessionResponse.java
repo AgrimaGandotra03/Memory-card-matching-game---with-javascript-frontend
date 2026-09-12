@@ -36,6 +36,15 @@ public class GameSessionResponse {
     /** true when this flip completed the last pair and won the game. */
     private boolean wonGame;
 
+    /**
+     * Card ID(s) involved in this move, with symbolKey force-revealed in
+     * `board` for those IDs even if their flipped/matched flags say hidden.
+     * Needed because on NO_MATCH the server flips both cards back down
+     * (and re-masks them) before the response is built — without this,
+     * the client has no way to show what the second card actually was.
+     */
+    private List<Integer> revealedThisMove;
+
     /** Human-readable status message for UI display or debugging. */
     private String message;
 
@@ -76,6 +85,9 @@ public class GameSessionResponse {
 
     public boolean isWonGame() { return wonGame; }
     public void setWonGame(boolean wonGame) { this.wonGame = wonGame; }
+
+    public List<Integer> getRevealedThisMove() { return revealedThisMove; }
+    public void setRevealedThisMove(List<Integer> revealedThisMove) { this.revealedThisMove = revealedThisMove; }
 
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }

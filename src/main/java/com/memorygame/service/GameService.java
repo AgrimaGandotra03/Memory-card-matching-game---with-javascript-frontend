@@ -172,18 +172,21 @@ public class GameService {
         String flipResult;
         boolean wonGame = false;
         int firstId = session.getFirstFlippedCardId();
+        List<Integer> revealedThisMove;
 
         if (firstId == -1) {
             // ── First flip of the turn ──────────────────────────────────────
             card.setFlipped(true);
             session.setFirstFlippedCardId(cardId);
             flipResult = "FIRST_FLIP";
+            revealedThisMove = List.of(cardId);
 
         } else {
             // ── Second flip of the turn ─────────────────────────────────────
             CardState firstCard = requireCard(board, firstId);
             card.setFlipped(true);
             session.setMoves(session.getMoves() + 1);
+            revealedThisMove = List.of(firstId, cardId);
 
             if (firstCard.getSymbolKey().equals(card.getSymbolKey())) {
                 // ✅ Match
@@ -219,6 +222,19 @@ public class GameService {
         GameSessionResponse resp = buildResponse(session, board);
         resp.setFlipResult(flipResult);
         resp.setWonGame(wonGame);
+        resp.setRevealedThisMove(revealedThisMove);
+
+        // Force-reveal the symbol for the card(s) involved in this move, even
+        // if their flipped/matched flags say hidden (true for NO_MATCH, where
+        // both cards were already flipped back down above). Without this the
+        // client has no way to show what the second card actually was before
+        // it flips back — it would just look like the second card never flipped.
+        Map<Integer, String> trueSymbols = board.stream()
+                .collect(Collectors.toMap(CardState::getCardId, CardState::getSymbolKey));
+        resp.getBoard().stream()
+                .filter(dto -> revealedThisMove.contains(dto.getCardId()))
+                .forEach(dto -> dto.setSymbolKey(trueSymbols.get(dto.getCardId())));
+
         resp.setMessage(flipMessage(flipResult, wonGame, session.getScore()));
         return resp;
     }

@@ -367,12 +367,28 @@ const GameApp = {
             this.session = updatedSession;
             this.updateHUD(updatedSession);
 
-            // Update card face with returned symbol
-            const faceEl = tileEl.querySelector('.card-face');
-            const cardData = updatedSession.board.find(c => c.cardId === cardId);
-            if (faceEl && cardData && cardData.symbolKey) {
-                faceEl.textContent = cardData.symbolKey;
-            }
+            // Update card face(s) with the returned symbol. On a NO_MATCH the
+            // server already flips both cards back down (and re-masks them)
+            // before responding, so `updatedSession.board` alone would show
+            // this card's symbol as null — it would rotate but stay blank.
+            // `revealedThisMove` carries the true symbol(s) for the card(s)
+            // involved in this move regardless of their post-move hidden
+            // state, so both the first and second card render correctly.
+            const revealIds = (updatedSession.revealedThisMove && updatedSession.revealedThisMove.length)
+                ? updatedSession.revealedThisMove
+                : [cardId];
+
+            revealIds.forEach(id => {
+                const el = document.querySelector(`.card-tile[data-card-id="${id}"]`);
+                const face = el?.querySelector('.card-face');
+                const data = updatedSession.board.find(c => c.cardId === id);
+                if (el && !el.classList.contains('flipped')) {
+                    el.classList.add('flipped');
+                }
+                if (face && data && data.symbolKey) {
+                    face.textContent = data.symbolKey;
+                }
+            });
 
             if (updatedSession.flipResult === 'MATCH') {
                 AudioManager.playMatch();
