@@ -39,8 +39,9 @@ public class GameController {
         GameSessionResponse response = gameService.startNewGame(
                 request.getUserId(),
                 request.getDifficulty(),
-            request.getTheme(),
-            request.isFocusMode()
+                request.getTheme(),
+                request.isFocusMode(),
+                request.getMode()
         );
         return ResponseEntity.ok(response);
     }

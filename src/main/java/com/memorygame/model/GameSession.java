@@ -93,6 +93,33 @@ public class GameSession {
     /** Correct matches divided by completed two-card attempts, on a 0-100 scale. */
     private Double accuracyPercent = 0.0;
 
+    /** Selected high-level game mode. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 24)
+    private GameMode mode = GameMode.CLASSIC;
+
+    /** Server-owned end of a timed challenge. */
+    private Instant gameDeadlineAt;
+
+    /** Fixed duration for a timed challenge, in seconds. */
+    private Integer totalTimeLimitSeconds = 0;
+
+    /** Current level within a progressive session. */
+    private Integer level = 1;
+
+    /** Score accumulated across completed progressive levels. */
+    private Integer cumulativeScore = 0;
+
+    /** Ordered card IDs for sequence mode, stored as JSON. */
+    @Column(columnDefinition = "TEXT")
+    private String sequenceOrderJson;
+
+    /** End of sequence playback before replay input is accepted. */
+    private Instant sequencePlaybackEndsAt;
+
+    /** Next sequence index the player must reproduce. */
+    private Integer sequencePosition = 0;
+
     // ── Server-side timer fields ──────────────────────────────────────────────
 
     /** When this session was last started (or re-started after a restart). */
@@ -219,6 +246,36 @@ public class GameSession {
         return accuracyPercent == null ? 0.0 : accuracyPercent;
     }
     public void setAccuracyPercent(Double accuracyPercent) { this.accuracyPercent = accuracyPercent; }
+
+    public GameMode getMode() { return mode == null ? GameMode.CLASSIC : mode; }
+    public void setMode(GameMode mode) { this.mode = mode; }
+
+    public Instant getGameDeadlineAt() { return gameDeadlineAt; }
+    public void setGameDeadlineAt(Instant gameDeadlineAt) { this.gameDeadlineAt = gameDeadlineAt; }
+
+    public Integer getTotalTimeLimitSeconds() {
+        return totalTimeLimitSeconds == null ? 0 : totalTimeLimitSeconds;
+    }
+    public void setTotalTimeLimitSeconds(Integer totalTimeLimitSeconds) {
+        this.totalTimeLimitSeconds = totalTimeLimitSeconds;
+    }
+
+    public Integer getLevel() { return level == null ? 1 : level; }
+    public void setLevel(Integer level) { this.level = level; }
+
+    public Integer getCumulativeScore() { return cumulativeScore == null ? 0 : cumulativeScore; }
+    public void setCumulativeScore(Integer cumulativeScore) { this.cumulativeScore = cumulativeScore; }
+
+    public String getSequenceOrderJson() { return sequenceOrderJson; }
+    public void setSequenceOrderJson(String sequenceOrderJson) { this.sequenceOrderJson = sequenceOrderJson; }
+
+    public Instant getSequencePlaybackEndsAt() { return sequencePlaybackEndsAt; }
+    public void setSequencePlaybackEndsAt(Instant sequencePlaybackEndsAt) {
+        this.sequencePlaybackEndsAt = sequencePlaybackEndsAt;
+    }
+
+    public Integer getSequencePosition() { return sequencePosition == null ? 0 : sequencePosition; }
+    public void setSequencePosition(Integer sequencePosition) { this.sequencePosition = sequencePosition; }
 
     public Instant getStartedAt() { return startedAt; }
     public void setStartedAt(Instant startedAt) { this.startedAt = startedAt; }

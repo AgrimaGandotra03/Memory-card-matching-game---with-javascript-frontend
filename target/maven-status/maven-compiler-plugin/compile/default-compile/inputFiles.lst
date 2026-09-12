@@ -19,6 +19,7 @@ C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-g
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\MemoryGameApplication.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\CardState.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\Difficulty.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\GameMode.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\GameSession.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\GameStatus.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\PerformanceHistory.java
@@ -32,3 +33,10 @@ C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-g
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\repository\UserRepository.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\service\AuthService.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\service\GameService.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\service\mode\ClassicGameModeStrategy.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\service\mode\GameModeStrategy.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\service\mode\GameModeStrategyRegistry.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\service\mode\ModeFlipResult.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\service\mode\ProgressiveGameModeStrategy.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\service\mode\SequenceMemoryGameModeStrategy.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\service\mode\TimedChallengeGameModeStrategy.java

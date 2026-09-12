@@ -11,6 +11,10 @@ import com.memorygame.repository.GameSessionRepository;
 import com.memorygame.repository.PerformanceHistoryRepository;
 import com.memorygame.repository.ScoreRecordRepository;
 import com.memorygame.repository.UserRepository;
+import com.memorygame.service.mode.GameModeStrategy;
+import com.memorygame.service.mode.GameModeStrategyRegistry;
+import com.memorygame.service.mode.ModeFlipResult;
+import com.memorygame.service.mode.SequenceMemoryGameModeStrategy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -60,10 +64,11 @@ public class GameService {
     private static final int HINT_PENALTY  = 50;  // per hint
     private static final int TIME_PENALTY  = 1;   // per elapsed second
 
-        private static final Map<Difficulty, Integer> BASE_MOVE_LIMIT_SECONDS = Map.of(
+    private static final Map<Difficulty, Integer> BASE_MOVE_LIMIT_SECONDS = Map.of(
             Difficulty.EASY, 10, Difficulty.MEDIUM, 8, Difficulty.HARD, 6);
-        private static final Map<Difficulty, Integer> FOCUS_MOVE_LIMIT_SECONDS = Map.of(
+    private static final Map<Difficulty, Integer> FOCUS_MOVE_LIMIT_SECONDS = Map.of(
             Difficulty.EASY, 6, Difficulty.MEDIUM, 5, Difficulty.HARD, 4);
+    private static final int PROGRESSIVE_LEVEL_COUNT = 3;
 
     // ── Difficulty → pair counts ──────────────────────────────────────────────
 
@@ -107,6 +112,7 @@ public class GameService {
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final int previewDurationSeconds;
+    private final GameModeStrategyRegistry modeStrategyRegistry;
 
     @Autowired
     public GameService(GameSessionRepository sessionRepository,
@@ -114,13 +120,15 @@ public class GameService {
                        ScoreRecordRepository scoreRepository,
                        UserRepository userRepository,
                        ObjectMapper objectMapper,
-                       @Value("${memorygame.preview-duration-seconds:4}") int previewDurationSeconds) {
+                       @Value("${memorygame.preview-duration-seconds:4}") int previewDurationSeconds,
+                       GameModeStrategyRegistry modeStrategyRegistry) {
         this.sessionRepository = sessionRepository;
         this.performanceHistoryRepository = performanceHistoryRepository;
         this.scoreRepository   = scoreRepository;
         this.userRepository    = userRepository;
         this.objectMapper      = objectMapper;
         this.previewDurationSeconds = Math.max(0, previewDurationSeconds);
+        this.modeStrategyRegistry = modeStrategyRegistry;
     }
 
     // =========================================================================
@@ -139,10 +147,18 @@ public class GameService {
     @Transactional
     public GameSessionResponse startNewGame(Long userId, Difficulty difficulty, String theme,
                                             boolean focusMode) {
+        return startNewGame(userId, difficulty, theme, focusMode, GameMode.CLASSIC);
+    }
+
+    @Transactional
+    public GameSessionResponse startNewGame(Long userId, Difficulty difficulty, String theme,
+                                            boolean focusMode, GameMode mode) {
         User user = findUser(userId);
         String resolvedTheme = resolveTheme(theme);
         List<CardState> board = generateBoard(difficulty, resolvedTheme);
         Instant startedAt = Instant.now();
+        GameMode selectedMode = mode == null ? GameMode.CLASSIC : mode;
+        GameModeStrategy modeStrategy = modeStrategyRegistry.forMode(selectedMode);
 
         GameSession session = new GameSession();
         session.setUser(user);
@@ -160,13 +176,21 @@ public class GameService {
         session.setMaxConsecutiveMatchStreak(0);
         session.setConcentrationScore(100.0);
         session.setAccuracyPercent(0.0);
-        session.setPreviewEndsAt(startedAt.plusSeconds(previewDurationSeconds));
+        session.setMode(selectedMode);
+        session.setLevel(1);
+        session.setCumulativeScore(0);
+        session.setPreviewEndsAt(selectedMode == GameMode.SEQUENCE_MEMORY
+            ? null : startedAt.plusSeconds(previewDurationSeconds));
         session.setFirstFlipAt(null);
         session.setMoveDeadlineAt(null);
         session.setFocusMode(focusMode);
         session.setMoveTimeLimitSeconds(initialMoveTimeLimit(difficulty, focusMode));
         session.setFirstFlippedCardId(-1);
         session.setTotalPausedSeconds(0L);
+        modeStrategy.initialize(session, board,
+            selectedMode == GameMode.SEQUENCE_MEMORY
+                ? startedAt : startedAt.plusSeconds(previewDurationSeconds),
+            objectMapper);
 
         session = sessionRepository.save(session);
 
@@ -191,9 +215,41 @@ public class GameService {
     public GameSessionResponse flipCard(Long sessionId, int cardId) {
         GameSession session = requireActive(sessionId);
         List<CardState> board = fromJson(session.getBoardStateJson());
+        GameModeStrategy modeStrategy = modeStrategyRegistry.forMode(session.getMode());
+
+        if (modeStrategy.hasExpired(session, Instant.now())) {
+            modeStrategy.expire(session);
+            sessionRepository.save(session);
+            GameSessionResponse expired = buildResponse(session, board);
+            expired.setMessage("Time expired. The challenge is over.");
+            return expired;
+        }
 
         if (isPreviewActive(session)) {
             throw new IllegalStateException("Memory preview is still active. Wait until it ends before flipping.");
+        }
+
+        if (modeStrategy.isSequenceMode()) {
+            ModeFlipResult result = modeStrategy.flipSequence(
+                session, board, cardId, Instant.now(), objectMapper);
+            session.setBoardStateJson(toJson(board));
+            if (result.isWonGame()) {
+            int levelScore = calculateScore(session.getMoves(),
+                computeElapsedSeconds(session), session.getDifficulty(), session.getHintsUsed());
+            session.setCumulativeScore(session.getCumulativeScore() + levelScore);
+            session.setScore(session.getCumulativeScore());
+            writeScoreRecord(session, computeElapsedSeconds(session));
+            writePerformanceHistory(session, board.size() / 2, computeElapsedSeconds(session));
+            }
+            sessionRepository.save(session);
+            GameSessionResponse sequenceResponse = buildResponse(session, board);
+            sequenceResponse.setFlipResult(result.getFlipResult());
+            sequenceResponse.setWonGame(result.isWonGame());
+            sequenceResponse.setRevealedThisMove(result.getRevealedThisMove());
+            sequenceResponse.setMessage(result.isWonGame()
+                ? "Sequence complete! Excellent memory."
+                : result.isLostGame() ? "Wrong sequence. Try again." : "Correct sequence step.");
+            return sequenceResponse;
         }
 
         CardState card = requireCard(board, cardId);
@@ -206,6 +262,7 @@ public class GameService {
 
         String flipResult;
         boolean wonGame = false;
+        boolean levelCompleted = false;
         int firstId = session.getFirstFlippedCardId();
         List<Integer> revealedThisMove;
 
@@ -252,11 +309,25 @@ public class GameService {
                     int finalScore = calculateScore(
                             session.getMoves(), elapsed,
                             session.getDifficulty(), session.getHintsUsed());
-                    session.setScore(finalScore);
-                    session.setStatus(GameStatus.WON);
-                    updatePerformanceMetrics(session, board.size() / 2, elapsed);
-                    writeScoreRecord(session, elapsed);
-                    writePerformanceHistory(session, board.size() / 2, elapsed);
+                    if (modeStrategy.isProgressiveMode()
+                            && session.getLevel() < PROGRESSIVE_LEVEL_COUNT) {
+                        session.setCumulativeScore(session.getCumulativeScore() + finalScore);
+                        session.setScore(session.getCumulativeScore());
+                        session.setLevel(session.getLevel() + 1);
+                        Difficulty nextDifficulty = nextDifficulty(session.getDifficulty());
+                        session.setDifficulty(nextDifficulty);
+                        board = generateBoard(nextDifficulty, session.getTheme());
+                        resetProgressiveLevel(session, board);
+                        levelCompleted = true;
+                    } else {
+                        session.setCumulativeScore(session.getCumulativeScore() + finalScore);
+                        session.setScore(session.getCumulativeScore());
+                        session.setStatus(GameStatus.WON);
+                        updatePerformanceMetrics(session, board.size() / 2, elapsed);
+                        writeScoreRecord(session, elapsed);
+                        writePerformanceHistory(session, board.size() / 2, elapsed);
+                        wonGame = true;
+                    }
                 }
             } else {
                 // ❌ No match — flip both cards back
@@ -279,6 +350,7 @@ public class GameService {
         GameSessionResponse resp = buildResponse(session, board);
         resp.setFlipResult(flipResult);
         resp.setWonGame(wonGame);
+        resp.setLevelCompleted(levelCompleted);
         resp.setRevealedThisMove(revealedThisMove);
 
         // Force-reveal the symbol for the card(s) involved in this move, even
@@ -292,7 +364,9 @@ public class GameService {
                 .filter(dto -> revealedThisMove.contains(dto.getCardId()))
                 .forEach(dto -> dto.setSymbolKey(trueSymbols.get(dto.getCardId())));
 
-        resp.setMessage(flipMessage(flipResult, wonGame, session.getScore()));
+        resp.setMessage(levelCompleted
+            ? "Level complete! The next progressive level is ready."
+            : flipMessage(flipResult, wonGame, session.getScore()));
         return resp;
     }
 
@@ -429,7 +503,7 @@ public class GameService {
      * Returns the most recent ACTIVE or PAUSED session for a user so they can
      * continue where they left off.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public GameSessionResponse loadGame(Long userId) {
         findUser(userId); // validate user exists first
         GameSession session = sessionRepository
@@ -437,6 +511,8 @@ public class GameService {
                         userId, Arrays.asList(GameStatus.ACTIVE, GameStatus.PAUSED))
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No active or paused game found for user " + userId + ". Start a new game first."));
+
+            expireModeIfNeeded(session);
 
         GameSessionResponse resp = buildResponse(session, fromJson(session.getBoardStateJson()));
         resp.setMessage("Loaded saved game (status: " + session.getStatus()
@@ -447,9 +523,10 @@ public class GameService {
     /**
      * Fetches any session by ID (useful for polling state without doing an action).
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public GameSessionResponse getSession(Long sessionId) {
         GameSession session = findSession(sessionId);
+        expireModeIfNeeded(session);
         return buildResponse(session, fromJson(session.getBoardStateJson()));
     }
 
@@ -576,6 +653,38 @@ public class GameService {
         return limits.getOrDefault(difficulty, 10);
     }
 
+    private void expireModeIfNeeded(GameSession session) {
+        GameModeStrategy strategy = modeStrategyRegistry.forMode(session.getMode());
+        if (strategy.hasExpired(session, Instant.now())) {
+            strategy.expire(session);
+            sessionRepository.save(session);
+        }
+    }
+
+    private Difficulty nextDifficulty(Difficulty difficulty) {
+        return switch (difficulty) {
+            case EASY -> Difficulty.MEDIUM;
+            case MEDIUM, HARD -> Difficulty.HARD;
+        };
+    }
+
+    private void resetProgressiveLevel(GameSession session, List<CardState> board) {
+        Instant previewStart = Instant.now();
+        session.setMoves(0);
+        session.setHintsUsed(0);
+        session.setMistakeCount(0);
+        session.setCurrentConsecutiveMatchStreak(0);
+        session.setMaxConsecutiveMatchStreak(0);
+        session.setAverageReactionTimeMillis(0L);
+        session.setAccuracyPercent(0.0);
+        session.setConcentrationScore(100.0);
+        session.setFirstFlippedCardId(-1);
+        session.setFirstFlipAt(null);
+        session.setMoveDeadlineAt(null);
+        session.setPreviewEndsAt(previewStart.plusSeconds(previewDurationSeconds));
+        session.setStatus(GameStatus.ACTIVE);
+    }
+
     private boolean isPreviewActive(GameSession session) {
         return session.getPreviewEndsAt() != null
                 && Instant.now().isBefore(session.getPreviewEndsAt());
@@ -648,7 +757,26 @@ public class GameService {
         resp.setFocusMode(session.isFocusMode());
         resp.setMoveTimeLimitSeconds(session.getMoveTimeLimitSeconds());
         resp.setMoveDeadlineAt(session.getMoveDeadlineAt());
-        boolean revealPreview = resp.isPreviewing();
+        resp.setMode(session.getMode().name());
+        resp.setGameDeadlineAt(session.getGameDeadlineAt());
+        long remaining = session.getGameDeadlineAt() == null ? 0L
+            : Math.max(0L, Duration.between(Instant.now(), session.getGameDeadlineAt()).getSeconds());
+        resp.setTimeRemainingSeconds(remaining);
+        resp.setLevel(session.getLevel());
+        resp.setCumulativeScore(session.getCumulativeScore());
+        boolean sequencePlaybackActive = session.getMode() == GameMode.SEQUENCE_MEMORY
+            && session.getSequencePlaybackEndsAt() != null
+            && Instant.now().isBefore(session.getSequencePlaybackEndsAt());
+        resp.setSequencePlaybackActive(sequencePlaybackActive);
+        resp.setSequencePlaybackEndsAt(session.getSequencePlaybackEndsAt());
+        resp.setSequenceExpectedPosition(session.getSequencePosition());
+        if (sequencePlaybackActive) {
+            SequenceMemoryGameModeStrategy sequenceStrategy =
+                (SequenceMemoryGameModeStrategy) modeStrategyRegistry.forMode(GameMode.SEQUENCE_MEMORY);
+            resp.setSequencePlaybackCardIds(
+                sequenceStrategy.sequenceOrder(session, objectMapper));
+        }
+        boolean revealPreview = resp.isPreviewing() || sequencePlaybackActive;
         resp.setBoard(board.stream()
             .map(card -> toCardDto(card, revealPreview))
             .collect(Collectors.toList()));

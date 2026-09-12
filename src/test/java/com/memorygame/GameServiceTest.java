@@ -18,6 +18,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -94,6 +95,38 @@ class GameServiceTest {
         GameSessionResponse firstFlip = gameService.flipCard(session.getSessionId(), 0);
         assertNotNull(firstFlip.getMoveDeadlineAt());
         assertEquals(0.0, firstFlip.getAccuracyPercent());
+    }
+
+    @Test
+    void testTimedChallengeExpiresFromServerClock() {
+        GameSessionResponse started = gameService.startNewGame(
+                testUser.getId(), Difficulty.EASY, "animals", false, GameMode.TIMED_CHALLENGE);
+        GameSession internal = sessionRepository.findById(started.getSessionId()).orElseThrow();
+        internal.setGameDeadlineAt(Instant.now().minusSeconds(1));
+        sessionRepository.save(internal);
+
+        GameSessionResponse expired = gameService.getSession(started.getSessionId());
+        assertEquals("LOST", expired.getStatus());
+        assertEquals(0, expired.getTimeRemainingSeconds());
+    }
+
+    @Test
+    void testSequenceModeReturnsPlaybackOrderAndAcceptsCorrectReplay() {
+        GameSessionResponse started = gameService.startNewGame(
+                testUser.getId(), Difficulty.EASY, "animals", false, GameMode.SEQUENCE_MEMORY);
+
+        assertEquals("SEQUENCE_MEMORY", started.getMode());
+        assertTrue(started.isSequencePlaybackActive());
+        assertFalse(started.getSequencePlaybackCardIds().isEmpty());
+
+        GameSession internal = sessionRepository.findById(started.getSessionId()).orElseThrow();
+        internal.setSequencePlaybackEndsAt(Instant.now().minusSeconds(1));
+        sessionRepository.save(internal);
+
+        int firstCardId = started.getSequencePlaybackCardIds().get(0);
+        GameSessionResponse replay = gameService.flipCard(started.getSessionId(), firstCardId);
+        assertEquals("SEQUENCE_CORRECT", replay.getFlipResult());
+        assertEquals(1, replay.getSequenceExpectedPosition());
     }
 
     @Test

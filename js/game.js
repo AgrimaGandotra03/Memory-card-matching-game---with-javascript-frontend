@@ -12,6 +12,7 @@ const GameApp = {
 
   selectedDifficulty: "EASY",
   selectedTheme: "animals",
+  selectedMode: "CLASSIC",
 
   init() {
     AudioManager.init();
@@ -86,6 +87,16 @@ const GameApp = {
           .forEach((opt) => opt.classList.remove("selected"));
         el.classList.add("selected");
         this.selectedTheme = el.dataset.theme;
+      });
+    });
+
+    document.querySelectorAll(".mode-option").forEach((el) => {
+      el.addEventListener("click", () => {
+        document
+          .querySelectorAll(".mode-option")
+          .forEach((opt) => opt.classList.remove("selected"));
+        el.classList.add("selected");
+        this.selectedMode = el.dataset.mode;
       });
     });
 
@@ -335,6 +346,7 @@ const GameApp = {
         this.selectedDifficulty,
         this.selectedTheme,
         document.getElementById("focus-mode-toggle")?.checked || false,
+        this.selectedMode,
       );
       this.setGameSession(session);
       UI.showScreen("game");
@@ -365,6 +377,8 @@ const GameApp = {
 
     if (session.previewing) {
       this.startPreviewCountdown();
+    } else if (session.sequencePlaybackActive) {
+      this.startSequencePlayback(session);
     } else {
       this.stopPreviewCountdown();
     }
@@ -380,7 +394,9 @@ const GameApp = {
     const boardEl = document.getElementById("board-grid");
     if (!boardEl) return;
 
-    boardEl.className = `board-grid ${session.difficulty.toLowerCase()}`;
+    boardEl.className = `board-grid ${session.difficulty.toLowerCase()} ${
+      session.mode === "SEQUENCE_MEMORY" ? "sequence-mode" : ""
+    }`;
     boardEl.innerHTML = "";
 
     session.board.forEach((card) => {
@@ -388,8 +404,21 @@ const GameApp = {
       tile.className = "card-tile";
       tile.dataset.cardId = card.cardId;
 
-      if (card.flipped || (session.previewing && card.symbolKey))
+      if (
+        card.flipped ||
+        ((session.previewing || session.sequencePlaybackActive) &&
+          card.symbolKey)
+      )
         tile.classList.add("flipped");
+      if (session.sequencePlaybackActive && session.sequencePlaybackCardIds) {
+        const sequenceIndex = session.sequencePlaybackCardIds.indexOf(
+          card.cardId,
+        );
+        if (sequenceIndex >= 0) {
+          tile.classList.add("sequence-playback-step");
+          tile.style.animationDelay = `${sequenceIndex * 120}ms`;
+        }
+      }
       if (card.matched) tile.classList.add("matched");
 
       tile.innerHTML = `
@@ -419,6 +448,12 @@ const GameApp = {
       `${((session.averageReactionTimeMillis || 0) / 1000).toFixed(1)}s`;
     document.getElementById("hud-move-limit").textContent =
       session.moveTimeLimitSeconds ? `${session.moveTimeLimitSeconds}s` : "--";
+    document.getElementById("hud-timer").textContent =
+      session.mode === "TIMED_CHALLENGE"
+        ? UI.formatTime(session.timeRemainingSeconds || 0)
+        : UI.formatTime(session.elapsedSeconds);
+    const level = document.getElementById("hud-level");
+    if (level) level.textContent = session.level || 1;
 
     const statusBanner = document.getElementById("status-banner");
     if (statusBanner && session.message) {
@@ -443,6 +478,7 @@ const GameApp = {
     if (this.isProcessing) return;
     if (!this.session || this.session.status !== "ACTIVE") return;
     if (this.session.previewing) return;
+    if (this.session.sequencePlaybackActive) return;
 
     const tileEl = document.querySelector(
       `.card-tile[data-card-id="${cardId}"]`,
@@ -466,6 +502,30 @@ const GameApp = {
       const updatedSession = await API.flipCard(this.session.sessionId, cardId);
       this.session = updatedSession;
       this.updateHUD(updatedSession);
+
+      if (updatedSession.mode === "SEQUENCE_MEMORY") {
+        this.renderBoard(updatedSession);
+        this.isProcessing = false;
+        if (updatedSession.wonGame) {
+          AudioManager.playWin();
+          setTimeout(() => UI.showWinModal(updatedSession), 600);
+        } else if (updatedSession.flipResult === "SEQUENCE_MISMATCH") {
+          AudioManager.playNoMatch();
+        } else {
+          AudioManager.playMatch();
+        }
+        return;
+      }
+
+      if (updatedSession.levelCompleted) {
+        this.renderBoard(updatedSession);
+        this.isProcessing = false;
+        UI.showToast(
+          `Level ${updatedSession.level - 1} complete. Level ${updatedSession.level} begins!`,
+          "success",
+        );
+        return;
+      }
 
       // Update card face(s) with the returned symbol. On a NO_MATCH the
       // server already flips both cards back down (and re-masks them)
@@ -635,9 +695,13 @@ const GameApp = {
     this.timerInterval = setInterval(() => {
       if (this.session && this.session.status === "ACTIVE") {
         this.session.elapsedSeconds++;
-        document.getElementById("hud-timer").textContent = UI.formatTime(
-          this.session.elapsedSeconds,
-        );
+        if (this.session.mode === "TIMED_CHALLENGE") {
+          this.pollTimedSession();
+        } else {
+          document.getElementById("hud-timer").textContent = UI.formatTime(
+            this.session.elapsedSeconds,
+          );
+        }
         this.updateMoveCountdown();
       }
     }, 1000);
@@ -647,6 +711,19 @@ const GameApp = {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
+    }
+  },
+
+  async pollTimedSession() {
+    if (!this.session || this.session.mode !== "TIMED_CHALLENGE") return;
+    try {
+      const refreshed = await API.getSession(this.session.sessionId);
+      this.setGameSession(refreshed);
+      if (refreshed.status === "LOST") {
+        UI.showToast("Time expired. Challenge over.", "error");
+      }
+    } catch (err) {
+      console.error("Timed session refresh failed:", err);
     }
   },
 
@@ -680,13 +757,47 @@ const GameApp = {
     this.previewInterval = setInterval(update, 250);
   },
 
+  startSequencePlayback(session) {
+    this.stopPreviewCountdown();
+    const overlay = document.getElementById("preview-overlay");
+    const countdown = document.getElementById("preview-countdown");
+    const kicker = document.getElementById("preview-kicker");
+    if (!overlay || !countdown || !session.sequencePlaybackEndsAt) return;
+    kicker.textContent = "Sequence playback";
+    overlay.hidden = false;
+    const update = async () => {
+      const remaining = Math.max(
+        0,
+        Math.ceil(
+          (Date.parse(session.sequencePlaybackEndsAt) - Date.now()) / 1000,
+        ),
+      );
+      countdown.textContent = remaining;
+      if (remaining === 0) {
+        this.stopPreviewCountdown();
+        try {
+          const refreshed = await API.getSession(session.sessionId);
+          this.setGameSession(refreshed);
+        } catch (err) {
+          UI.showToast("Sequence playback could not refresh.", "error");
+        }
+      }
+    };
+    update();
+    this.previewInterval = setInterval(update, 250);
+  },
+
   stopPreviewCountdown() {
     if (this.previewInterval) {
       clearInterval(this.previewInterval);
       this.previewInterval = null;
     }
     const overlay = document.getElementById("preview-overlay");
-    if (overlay) overlay.hidden = true;
+    if (overlay) {
+      overlay.hidden = true;
+      const kicker = document.getElementById("preview-kicker");
+      if (kicker) kicker.textContent = "Memory preview";
+    }
   },
 
   updateMoveCountdown() {

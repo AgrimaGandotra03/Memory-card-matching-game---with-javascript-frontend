@@ -31,6 +31,16 @@ public class GameSessionResponse {
     private boolean focusMode;
     private int moveTimeLimitSeconds;
     private Instant moveDeadlineAt;
+    private String mode;
+    private Instant gameDeadlineAt;
+    private long timeRemainingSeconds;
+    private int level;
+    private int cumulativeScore;
+    private boolean sequencePlaybackActive;
+    private Instant sequencePlaybackEndsAt;
+    private List<Integer> sequencePlaybackCardIds;
+    private int sequenceExpectedPosition;
+    private boolean levelCompleted;
 
     /** The board in display order; symbolKey is null for hidden cards. */
     private List<CardDto> board;
@@ -124,6 +134,46 @@ public class GameSessionResponse {
 
     public Instant getMoveDeadlineAt() { return moveDeadlineAt; }
     public void setMoveDeadlineAt(Instant moveDeadlineAt) { this.moveDeadlineAt = moveDeadlineAt; }
+
+    public String getMode() { return mode; }
+    public void setMode(String mode) { this.mode = mode; }
+
+    public Instant getGameDeadlineAt() { return gameDeadlineAt; }
+    public void setGameDeadlineAt(Instant gameDeadlineAt) { this.gameDeadlineAt = gameDeadlineAt; }
+
+    public long getTimeRemainingSeconds() { return timeRemainingSeconds; }
+    public void setTimeRemainingSeconds(long timeRemainingSeconds) {
+        this.timeRemainingSeconds = timeRemainingSeconds;
+    }
+
+    public int getLevel() { return level; }
+    public void setLevel(int level) { this.level = level; }
+
+    public int getCumulativeScore() { return cumulativeScore; }
+    public void setCumulativeScore(int cumulativeScore) { this.cumulativeScore = cumulativeScore; }
+
+    public boolean isSequencePlaybackActive() { return sequencePlaybackActive; }
+    public void setSequencePlaybackActive(boolean sequencePlaybackActive) {
+        this.sequencePlaybackActive = sequencePlaybackActive;
+    }
+
+    public Instant getSequencePlaybackEndsAt() { return sequencePlaybackEndsAt; }
+    public void setSequencePlaybackEndsAt(Instant sequencePlaybackEndsAt) {
+        this.sequencePlaybackEndsAt = sequencePlaybackEndsAt;
+    }
+
+    public List<Integer> getSequencePlaybackCardIds() { return sequencePlaybackCardIds; }
+    public void setSequencePlaybackCardIds(List<Integer> sequencePlaybackCardIds) {
+        this.sequencePlaybackCardIds = sequencePlaybackCardIds;
+    }
+
+    public int getSequenceExpectedPosition() { return sequenceExpectedPosition; }
+    public void setSequenceExpectedPosition(int sequenceExpectedPosition) {
+        this.sequenceExpectedPosition = sequenceExpectedPosition;
+    }
+
+    public boolean isLevelCompleted() { return levelCompleted; }
+    public void setLevelCompleted(boolean levelCompleted) { this.levelCompleted = levelCompleted; }
 
     public List<CardDto> getBoard() { return board; }
     public void setBoard(List<CardDto> board) { this.board = board; }

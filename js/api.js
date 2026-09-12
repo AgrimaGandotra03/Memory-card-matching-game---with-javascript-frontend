@@ -82,10 +82,16 @@ const API = {
 
   // ── Game Engine Endpoints ─────────────────────────────────────────────────
 
-  async startGame(userId, difficulty, theme, focusMode = false) {
+  async startGame(
+    userId,
+    difficulty,
+    theme,
+    focusMode = false,
+    mode = "CLASSIC",
+  ) {
     return this.request("/api/game/start", {
       method: "POST",
-      body: JSON.stringify({ userId, difficulty, theme, focusMode }),
+      body: JSON.stringify({ userId, difficulty, theme, focusMode, mode }),
     });
   },
 

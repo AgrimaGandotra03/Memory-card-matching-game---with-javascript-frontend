@@ -229,6 +229,32 @@
             </label>
           </div>
 
+          <div class="menu-section mode-section">
+            <div class="section-title">🎯 3. Select Game Mode</div>
+            <div class="option-grid mode-option-grid">
+              <div class="option-card mode-option selected" data-mode="CLASSIC">
+                <div class="option-icon">🎴</div>
+                <div class="option-label">Classic</div>
+                <div class="option-sub">Match every pair</div>
+              </div>
+              <div class="option-card mode-option" data-mode="TIMED_CHALLENGE">
+                <div class="option-icon">⏱️</div>
+                <div class="option-label">Timed Challenge</div>
+                <div class="option-sub">Beat the clock</div>
+              </div>
+              <div class="option-card mode-option" data-mode="SEQUENCE_MEMORY">
+                <div class="option-icon">🔢</div>
+                <div class="option-label">Sequence Memory</div>
+                <div class="option-sub">Replay the order</div>
+              </div>
+              <div class="option-card mode-option" data-mode="PROGRESSIVE">
+                <div class="option-icon">📈</div>
+                <div class="option-label">Progressive</div>
+                <div class="option-sub">Climb three levels</div>
+              </div>
+            </div>
+          </div>
+
           <!-- Game Launch Actions -->
           <div
             style="
@@ -292,6 +318,10 @@
                 <span id="hud-move-limit" class="stat-value">--</span>
               </div>
               <div class="hud-stat">
+                <span class="stat-label">Level</span>
+                <span id="hud-level" class="stat-value">1</span>
+              </div>
+              <div class="hud-stat">
                 <span class="stat-label">Score</span>
                 <span
                   id="hud-score"
@@ -343,7 +373,9 @@
           </div>
 
           <div id="preview-overlay" class="preview-overlay" hidden>
-            <span class="preview-kicker">Memory preview</span>
+            <span id="preview-kicker" class="preview-kicker"
+              >Memory preview</span
+            >
             <strong><span id="preview-countdown">4</span>s</strong>
             <span>Study the board</span>
           </div>

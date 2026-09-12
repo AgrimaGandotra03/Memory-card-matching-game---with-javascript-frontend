@@ -450,6 +450,18 @@ select:focus {
   justify-content: center;
 }
 
+.mode-section {
+  margin-top: 28px;
+}
+
+.mode-option-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.mode-option .option-sub {
+  min-height: 2.2em;
+}
+
 .focus-toggle {
   display: grid;
   grid-template-columns: auto auto;
@@ -567,6 +579,31 @@ select:focus {
   color: #cffafe;
   box-shadow: 0 0 24px var(--accent-cyan-glow);
   animation: previewPulse 1.4s ease-in-out infinite;
+}
+
+.sequence-mode .card-tile.matched {
+  box-shadow: 0 0 18px var(--accent-cyan-glow);
+}
+
+.sequence-playback-step {
+  animation: sequenceStepReveal 0.35s ease both;
+}
+
+@keyframes sequenceStepReveal {
+  from {
+    opacity: 0.35;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 700px) {
+  .mode-option-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .preview-overlay strong {

@@ -1,6 +1,7 @@
 package com.memorygame.dto;
 
 import com.memorygame.model.Difficulty;
+import com.memorygame.model.GameMode;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -23,6 +24,9 @@ public class StartGameRequest {
     /** Optional cognitive-training mode; omitted requests remain standard games. */
     private boolean focusMode = false;
 
+    /** Defaults to CLASSIC for existing clients. */
+    private GameMode mode = GameMode.CLASSIC;
+
     // ---------- getters & setters ----------
 
     public Long getUserId() { return userId; }
@@ -36,4 +40,7 @@ public class StartGameRequest {
 
     public boolean isFocusMode() { return focusMode; }
     public void setFocusMode(boolean focusMode) { this.focusMode = focusMode; }
+
+    public GameMode getMode() { return mode == null ? GameMode.CLASSIC : mode; }
+    public void setMode(GameMode mode) { this.mode = mode; }
 }
