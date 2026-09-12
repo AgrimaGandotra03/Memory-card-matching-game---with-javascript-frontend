@@ -3,6 +3,7 @@ package com.memorygame.model;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 /**
  * Persists one game session for a user.
@@ -124,6 +125,9 @@ public class GameSession {
     private Boolean performanceRecorded = false;
 
     private Long performanceHistoryId;
+
+    private Boolean dailyChallenge = false;
+    private LocalDate dailyChallengeDate;
 
     // ── Server-side timer fields ──────────────────────────────────────────────
 
@@ -287,6 +291,11 @@ public class GameSession {
 
     public Long getPerformanceHistoryId() { return performanceHistoryId; }
     public void setPerformanceHistoryId(Long performanceHistoryId) { this.performanceHistoryId = performanceHistoryId; }
+
+    public boolean isDailyChallenge() { return Boolean.TRUE.equals(dailyChallenge); }
+    public void setDailyChallenge(Boolean dailyChallenge) { this.dailyChallenge = dailyChallenge; }
+    public LocalDate getDailyChallengeDate() { return dailyChallengeDate; }
+    public void setDailyChallengeDate(LocalDate dailyChallengeDate) { this.dailyChallengeDate = dailyChallengeDate; }
 
     public Instant getStartedAt() { return startedAt; }
     public void setStartedAt(Instant startedAt) { this.startedAt = startedAt; }

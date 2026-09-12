@@ -105,6 +105,9 @@ const GameApp = {
       .getElementById("btn-start-game")
       ?.addEventListener("click", () => this.startNewGame());
     document
+      .getElementById("btn-daily-challenge")
+      ?.addEventListener("click", () => this.startDailyChallenge());
+    document
       .getElementById("btn-resume-game")
       ?.addEventListener("click", () => this.loadActiveGame());
 
@@ -262,6 +265,7 @@ const GameApp = {
       // Load high scores
       await this.loadScoreHistory();
       await this.loadPerformanceHistory();
+      await this.loadEngagementDashboard();
       UI.showScreen("profile");
     } catch (err) {
       UI.showToast("Failed to load profile: " + err.message, "error");
@@ -372,6 +376,41 @@ const GameApp = {
     drawLine("concentrationScore", "#f59e0b");
   },
 
+  async loadEngagementDashboard() {
+    try {
+      const [daily, badges, recommendations] = await Promise.all([
+        API.getDailyChallenge(this.user.userId),
+        API.getBadges(this.user.userId),
+        API.getRecommendations(this.user.userId),
+      ]);
+      const dailyEl = document.getElementById("daily-challenge-status");
+      if (dailyEl)
+        dailyEl.textContent = daily.completed
+          ? `Completed · ${daily.completionScore} pts`
+          : "Ready to play";
+      const badgesEl = document.getElementById("badge-list");
+      if (badgesEl)
+        badgesEl.innerHTML = badges.length
+          ? badges
+              .map(
+                (badge) =>
+                  `<span class="badge-pill" title="${badge.description}">🏅 ${badge.name}</span>`,
+              )
+              .join("")
+          : '<span class="muted">No badges yet</span>';
+      const recommendationsEl = document.getElementById("recommendation-list");
+      if (recommendationsEl)
+        recommendationsEl.innerHTML = recommendations
+          .map(
+            (item) =>
+              `<li><strong>${item.title}</strong><span>${item.message}</span></li>`,
+          )
+          .join("");
+    } catch (err) {
+      console.error("Failed to load engagement dashboard:", err);
+    }
+  },
+
   // ── Game Management ───────────────────────────────────────────────────────
 
   async checkActiveSavedGame() {
@@ -408,6 +447,19 @@ const GameApp = {
       UI.showToast(session.message || "Game started! Good luck.", "info");
     } catch (err) {
       UI.showToast("Could not start game: " + err.message, "error");
+    }
+  },
+
+  async startDailyChallenge() {
+    if (!this.user) return;
+    try {
+      const date = new Date().toISOString().slice(0, 10);
+      const session = await API.startGame(this.user.userId, "EASY", "animals", false, "CLASSIC", true, date);
+      this.setGameSession(session);
+      UI.showScreen("game");
+      UI.showToast("Today's fixed challenge is ready.", "info");
+    } catch (err) {
+      UI.showToast("Could not start daily challenge: " + err.message, "error");
     }
   },
 

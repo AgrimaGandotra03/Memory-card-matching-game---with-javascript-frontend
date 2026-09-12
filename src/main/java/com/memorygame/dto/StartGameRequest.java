@@ -2,6 +2,7 @@ package com.memorygame.dto;
 
 import com.memorygame.model.Difficulty;
 import com.memorygame.model.GameMode;
+import java.time.LocalDate;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -26,6 +27,8 @@ public class StartGameRequest {
 
     /** Defaults to CLASSIC for existing clients. */
     private GameMode mode = GameMode.CLASSIC;
+    private boolean dailyChallenge = false;
+    private LocalDate dailyChallengeDate;
 
     // ---------- getters & setters ----------
 
@@ -43,4 +46,8 @@ public class StartGameRequest {
 
     public GameMode getMode() { return mode == null ? GameMode.CLASSIC : mode; }
     public void setMode(GameMode mode) { this.mode = mode; }
+    public boolean isDailyChallenge() { return dailyChallenge; }
+    public void setDailyChallenge(boolean dailyChallenge) { this.dailyChallenge = dailyChallenge; }
+    public LocalDate getDailyChallengeDate() { return dailyChallengeDate; }
+    public void setDailyChallengeDate(LocalDate dailyChallengeDate) { this.dailyChallengeDate = dailyChallengeDate; }
 }

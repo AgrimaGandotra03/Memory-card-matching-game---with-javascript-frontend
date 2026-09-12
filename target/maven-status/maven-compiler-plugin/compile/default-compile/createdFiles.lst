@@ -1,4 +1,5 @@
 com\memorygame\service\mode\ProgressiveGameModeStrategy.class
+com\memorygame\controller\EngagementController.class
 com\memorygame\service\AuthService.class
 com\memorygame\dto\PerformanceHistoryResponse.class
 com\memorygame\model\PerformanceHistory.class
@@ -8,6 +9,7 @@ com\memorygame\service\GameService$2.class
 com\memorygame\repository\PerformanceHistoryRepository.class
 com\memorygame\dto\ProfileResponse.class
 com\memorygame\model\User.class
+com\memorygame\service\EngagementService.class
 com\memorygame\controller\GameController.class
 com\memorygame\repository\GameSessionRepository.class
 com\memorygame\model\GameStatus.class
@@ -19,8 +21,11 @@ com\memorygame\controller\PerformanceController.class
 com\memorygame\service\mode\SequenceMemoryGameModeStrategy$1.class
 com\memorygame\model\CardState.class
 com\memorygame\dto\FlipCardRequest.class
+com\memorygame\dto\DailyChallengeResponse.class
 com\memorygame\dto\CardDto.class
+com\memorygame\model\DailyChallengeCompletion.class
 com\memorygame\service\mode\ModeFlipResult.class
+com\memorygame\dto\BadgeResponse.class
 com\memorygame\dto\StartGameRequest.class
 com\memorygame\MemoryGameApplication.class
 com\memorygame\dto\SessionPerformanceReport.class
@@ -28,9 +33,12 @@ com\memorygame\repository\PlayerProfileRepository.class
 com\memorygame\repository\ScoreRecordRepository.class
 com\memorygame\dto\ErrorResponse.class
 com\memorygame\model\PlayerProfile.class
+com\memorygame\model\PlayerBadge.class
+com\memorygame\repository\DailyChallengeCompletionRepository.class
 com\memorygame\service\mode\GameModeStrategyRegistry.class
 com\memorygame\config\SecurityConfig.class
 com\memorygame\dto\ScoreRecordResponse.class
+com\memorygame\repository\PlayerBadgeRepository.class
 com\memorygame\controller\ProfileController.class
 com\memorygame\dto\AuthRequest.class
 com\memorygame\repository\UserRepository.class
@@ -39,6 +47,7 @@ com\memorygame\service\mode\ClassicGameModeStrategy.class
 com\memorygame\model\GameMode.class
 com\memorygame\model\ScoreRecord.class
 com\memorygame\service\mode\SequenceMemoryGameModeStrategy.class
+com\memorygame\dto\RecommendationResponse.class
 com\memorygame\dto\HintResponse.class
 com\memorygame\controller\AuthController.class
 com\memorygame\service\GameService$1.class

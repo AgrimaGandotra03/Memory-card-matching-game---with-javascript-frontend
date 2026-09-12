@@ -88,10 +88,12 @@ const API = {
     theme,
     focusMode = false,
     mode = "CLASSIC",
+    dailyChallenge = false,
+    dailyChallengeDate = null,
   ) {
     return this.request("/api/game/start", {
       method: "POST",
-      body: JSON.stringify({ userId, difficulty, theme, focusMode, mode }),
+      body: JSON.stringify({ userId, difficulty, theme, focusMode, mode, dailyChallenge, dailyChallengeDate }),
     });
   },
 
@@ -146,6 +148,18 @@ const API = {
 
   async getPerformanceHistory(userId) {
     return this.request(`/api/performance/${userId}`);
+  },
+
+  async getDailyChallenge(userId) {
+    return this.request(`/api/engagement/daily/${userId}`);
+  },
+
+  async getBadges(userId) {
+    return this.request(`/api/engagement/badges/${userId}`);
+  },
+
+  async getRecommendations(userId) {
+    return this.request(`/api/engagement/recommendations/${userId}`);
   },
 };
 

@@ -24,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -115,6 +117,7 @@ public class GameService {
     private final ObjectMapper objectMapper;
     private final int previewDurationSeconds;
     private final GameModeStrategyRegistry modeStrategyRegistry;
+    private final EngagementService engagementService;
 
     @Autowired
     public GameService(GameSessionRepository sessionRepository,
@@ -123,7 +126,8 @@ public class GameService {
                        UserRepository userRepository,
                        ObjectMapper objectMapper,
                        @Value("${memorygame.preview-duration-seconds:4}") int previewDurationSeconds,
-                       GameModeStrategyRegistry modeStrategyRegistry) {
+                       GameModeStrategyRegistry modeStrategyRegistry,
+                       EngagementService engagementService) {
         this.sessionRepository = sessionRepository;
         this.performanceHistoryRepository = performanceHistoryRepository;
         this.scoreRepository   = scoreRepository;
@@ -131,6 +135,7 @@ public class GameService {
         this.objectMapper      = objectMapper;
         this.previewDurationSeconds = Math.max(0, previewDurationSeconds);
         this.modeStrategyRegistry = modeStrategyRegistry;
+        this.engagementService = engagementService;
     }
 
     // =========================================================================
@@ -155,9 +160,20 @@ public class GameService {
     @Transactional
     public GameSessionResponse startNewGame(Long userId, Difficulty difficulty, String theme,
                                             boolean focusMode, GameMode mode) {
+        return startNewGame(userId, difficulty, theme, focusMode, mode, false, null);
+        }
+
+        @Transactional
+        public GameSessionResponse startNewGame(Long userId, Difficulty difficulty, String theme,
+                            boolean focusMode, GameMode mode,
+                            boolean dailyChallenge, LocalDate dailyChallengeDate) {
         User user = findUser(userId);
         String resolvedTheme = resolveTheme(theme);
-        List<CardState> board = generateBoard(difficulty, resolvedTheme);
+        LocalDate challengeDate = dailyChallengeDate == null
+            ? LocalDate.now(ZoneOffset.UTC) : dailyChallengeDate;
+        List<CardState> board = dailyChallenge
+            ? generateDailyBoard(challengeDate)
+            : generateBoard(difficulty, resolvedTheme);
         Instant startedAt = Instant.now();
         GameMode selectedMode = mode == null ? GameMode.CLASSIC : mode;
         GameModeStrategy modeStrategy = modeStrategyRegistry.forMode(selectedMode);
@@ -181,6 +197,8 @@ public class GameService {
         session.setMode(selectedMode);
         session.setLevel(1);
         session.setCumulativeScore(0);
+        session.setDailyChallenge(dailyChallenge);
+        session.setDailyChallengeDate(dailyChallenge ? challengeDate : null);
         session.setPreviewEndsAt(selectedMode == GameMode.SEQUENCE_MEMORY
             ? null : startedAt.plusSeconds(previewDurationSeconds));
         session.setFirstFlipAt(null);
@@ -604,6 +622,15 @@ public class GameService {
         return board;
     }
 
+    private List<CardState> generateDailyBoard(LocalDate challengeDate) {
+        List<String> symbols = new ArrayList<>(THEME_SYMBOLS.get("animals").subList(0, 8));
+        symbols.addAll(new ArrayList<>(symbols));
+        Collections.shuffle(symbols, new Random(challengeDate.toString().hashCode() * 31L + 20260913L));
+        List<CardState> board = new ArrayList<>();
+        for (int i = 0; i < symbols.size(); i++) board.add(new CardState(i, symbols.get(i)));
+        return board;
+    }
+
     /** Resolves the requested theme to a valid key, falling back to "animals". */
     private String resolveTheme(String theme) {
         if (theme == null || theme.isBlank()) return "animals";
@@ -670,6 +697,11 @@ public class GameService {
         history = performanceHistoryRepository.save(history);
         session.setPerformanceHistoryId(history.getId());
         session.setPerformanceRecorded(true);
+        engagementService.evaluateBadges(session.getUser().getId());
+        if (session.isDailyChallenge()) {
+            engagementService.completeDailyChallenge(
+                session.getUser().getId(), session.getDailyChallengeDate(), session.getScore());
+        }
     }
 
     private PerformanceHistoryResponse toPerformanceHistoryResponse(PerformanceHistory history) {

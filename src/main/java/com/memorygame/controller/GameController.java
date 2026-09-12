@@ -41,7 +41,9 @@ public class GameController {
                 request.getDifficulty(),
                 request.getTheme(),
                 request.isFocusMode(),
-                request.getMode()
+                request.getMode(),
+                request.isDailyChallenge(),
+                request.getDailyChallengeDate()
         );
         return ResponseEntity.ok(response);
     }
