@@ -8,9 +8,11 @@ import com.memorygame.dto.HintResponse;
 import com.memorygame.dto.ScoreRecordResponse;
 import com.memorygame.model.*;
 import com.memorygame.repository.GameSessionRepository;
+import com.memorygame.repository.PerformanceHistoryRepository;
 import com.memorygame.repository.ScoreRecordRepository;
 import com.memorygame.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +60,11 @@ public class GameService {
     private static final int HINT_PENALTY  = 50;  // per hint
     private static final int TIME_PENALTY  = 1;   // per elapsed second
 
+        private static final Map<Difficulty, Integer> BASE_MOVE_LIMIT_SECONDS = Map.of(
+            Difficulty.EASY, 10, Difficulty.MEDIUM, 8, Difficulty.HARD, 6);
+        private static final Map<Difficulty, Integer> FOCUS_MOVE_LIMIT_SECONDS = Map.of(
+            Difficulty.EASY, 6, Difficulty.MEDIUM, 5, Difficulty.HARD, 4);
+
     // ── Difficulty → pair counts ──────────────────────────────────────────────
 
     private static final Map<Difficulty, Integer> PAIRS = Map.of(
@@ -95,19 +102,25 @@ public class GameService {
     // ── Dependencies ─────────────────────────────────────────────────────────
 
     private final GameSessionRepository sessionRepository;
+    private final PerformanceHistoryRepository performanceHistoryRepository;
     private final ScoreRecordRepository scoreRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final int previewDurationSeconds;
 
     @Autowired
     public GameService(GameSessionRepository sessionRepository,
+                       PerformanceHistoryRepository performanceHistoryRepository,
                        ScoreRecordRepository scoreRepository,
                        UserRepository userRepository,
-                       ObjectMapper objectMapper) {
+                       ObjectMapper objectMapper,
+                       @Value("${memorygame.preview-duration-seconds:4}") int previewDurationSeconds) {
         this.sessionRepository = sessionRepository;
+        this.performanceHistoryRepository = performanceHistoryRepository;
         this.scoreRepository   = scoreRepository;
         this.userRepository    = userRepository;
         this.objectMapper      = objectMapper;
+        this.previewDurationSeconds = Math.max(0, previewDurationSeconds);
     }
 
     // =========================================================================
@@ -120,9 +133,16 @@ public class GameService {
      */
     @Transactional
     public GameSessionResponse startNewGame(Long userId, Difficulty difficulty, String theme) {
+        return startNewGame(userId, difficulty, theme, false);
+    }
+
+    @Transactional
+    public GameSessionResponse startNewGame(Long userId, Difficulty difficulty, String theme,
+                                            boolean focusMode) {
         User user = findUser(userId);
         String resolvedTheme = resolveTheme(theme);
         List<CardState> board = generateBoard(difficulty, resolvedTheme);
+        Instant startedAt = Instant.now();
 
         GameSession session = new GameSession();
         session.setUser(user);
@@ -130,10 +150,21 @@ public class GameService {
         session.setTheme(resolvedTheme);
         session.setBoardStateJson(toJson(board));
         session.setStatus(GameStatus.ACTIVE);
-        session.setStartedAt(Instant.now());
+        session.setStartedAt(startedAt);
         session.setMoves(0);
         session.setHintsUsed(0);
         session.setScore(0);
+        session.setAverageReactionTimeMillis(0L);
+        session.setMistakeCount(0);
+        session.setCurrentConsecutiveMatchStreak(0);
+        session.setMaxConsecutiveMatchStreak(0);
+        session.setConcentrationScore(100.0);
+        session.setAccuracyPercent(0.0);
+        session.setPreviewEndsAt(startedAt.plusSeconds(previewDurationSeconds));
+        session.setFirstFlipAt(null);
+        session.setMoveDeadlineAt(null);
+        session.setFocusMode(focusMode);
+        session.setMoveTimeLimitSeconds(initialMoveTimeLimit(difficulty, focusMode));
         session.setFirstFlippedCardId(-1);
         session.setTotalPausedSeconds(0L);
 
@@ -161,6 +192,10 @@ public class GameService {
         GameSession session = requireActive(sessionId);
         List<CardState> board = fromJson(session.getBoardStateJson());
 
+        if (isPreviewActive(session)) {
+            throw new IllegalStateException("Memory preview is still active. Wait until it ends before flipping.");
+        }
+
         CardState card = requireCard(board, cardId);
         if (card.isMatched()) {
             throw new IllegalArgumentException("Card " + cardId + " is already matched — choose another.");
@@ -178,20 +213,35 @@ public class GameService {
             // ── First flip of the turn ──────────────────────────────────────
             card.setFlipped(true);
             session.setFirstFlippedCardId(cardId);
+            Instant firstFlipAt = Instant.now();
+            session.setFirstFlipAt(firstFlipAt);
+            session.setMoveDeadlineAt(firstFlipAt.plusSeconds(session.getMoveTimeLimitSeconds()));
             flipResult = "FIRST_FLIP";
             revealedThisMove = List.of(cardId);
 
         } else {
             // ── Second flip of the turn ─────────────────────────────────────
             CardState firstCard = requireCard(board, firstId);
+            if (session.isFocusMode() && isMoveExpired(session)) {
+                expireTimedOutMove(session, board, firstCard);
+                throw new IllegalStateException("Focus-mode move timer expired. Choose a new first card.");
+            }
+            Instant firstFlipAt = session.getFirstFlipAt();
             card.setFlipped(true);
             session.setMoves(session.getMoves() + 1);
             revealedThisMove = List.of(firstId, cardId);
+            long reactionTimeMillis = reactionTimeMillis(firstFlipAt, Instant.now());
 
             if (firstCard.getSymbolKey().equals(card.getSymbolKey())) {
                 // ✅ Match
                 firstCard.setMatched(true);
                 card.setMatched(true);
+                session.setCurrentConsecutiveMatchStreak(
+                    session.getCurrentConsecutiveMatchStreak() + 1);
+                session.setMaxConsecutiveMatchStreak(Math.max(
+                    session.getMaxConsecutiveMatchStreak(),
+                    session.getCurrentConsecutiveMatchStreak()));
+                recordCompletedMove(session, board.size() / 2, reactionTimeMillis);
                 // isFlipped stays true (face-up permanently)
                 flipResult = "MATCH";
 
@@ -204,16 +254,23 @@ public class GameService {
                             session.getDifficulty(), session.getHintsUsed());
                     session.setScore(finalScore);
                     session.setStatus(GameStatus.WON);
+                    updatePerformanceMetrics(session, board.size() / 2, elapsed);
                     writeScoreRecord(session, elapsed);
+                    writePerformanceHistory(session, board.size() / 2, elapsed);
                 }
             } else {
                 // ❌ No match — flip both cards back
                 firstCard.setFlipped(false);
                 card.setFlipped(false);
+                session.setMistakeCount(session.getMistakeCount() + 1);
+                session.setCurrentConsecutiveMatchStreak(0);
+                recordCompletedMove(session, board.size() / 2, reactionTimeMillis);
                 flipResult = "NO_MATCH";
             }
 
             session.setFirstFlippedCardId(-1);
+            session.setFirstFlipAt(null);
+            session.setMoveDeadlineAt(null);
         }
 
         session.setBoardStateJson(toJson(board));
@@ -295,6 +352,18 @@ public class GameService {
         session.setMoves(0);
         session.setHintsUsed(0);
         session.setScore(0);
+        session.setAverageReactionTimeMillis(0L);
+        session.setMistakeCount(0);
+        session.setCurrentConsecutiveMatchStreak(0);
+        session.setMaxConsecutiveMatchStreak(0);
+        session.setConcentrationScore(100.0);
+        session.setAccuracyPercent(0.0);
+        Instant restartedAt = Instant.now();
+        session.setPreviewEndsAt(restartedAt.plusSeconds(previewDurationSeconds));
+        session.setFirstFlipAt(null);
+        session.setMoveDeadlineAt(null);
+        session.setMoveTimeLimitSeconds(initialMoveTimeLimit(
+            session.getDifficulty(), session.isFocusMode()));
         session.setFirstFlippedCardId(-1);
         session.setStatus(GameStatus.ACTIVE);
         session.setStartedAt(Instant.now());
@@ -411,6 +480,13 @@ public class GameService {
                 .collect(Collectors.toList());
     }
 
+    /** Returns completed cognitive-performance snapshots for a player, newest first. */
+    @Transactional(readOnly = true)
+    public List<PerformanceHistory> getPerformanceHistory(Long userId) {
+        findUser(userId);
+        return performanceHistoryRepository.findByPlayerIdOrderBySessionDateDesc(userId);
+    }
+
     // =========================================================================
     // PRIVATE HELPERS
     // =========================================================================
@@ -475,6 +551,81 @@ public class GameService {
         scoreRepository.save(record);
     }
 
+    private void updatePerformanceMetrics(GameSession session, int totalPairs, long elapsedSeconds) {
+        session.setConcentrationScore(Math.max(0.0,
+            Math.min(100.0, session.getAccuracyPercent() - (elapsedSeconds * 0.1))));
+    }
+
+    private void writePerformanceHistory(GameSession session, int totalPairs, long elapsedSeconds) {
+        int moves = session.getMoves();
+        double accuracy = moves == 0 ? 0.0 : (totalPairs * 100.0) / moves;
+        PerformanceHistory history = new PerformanceHistory(
+                session.getUser(),
+                java.time.LocalDateTime.now(),
+                session.getScore(),
+                accuracy,
+                elapsedSeconds,
+                session.getMistakeCount(),
+                session.getMaxConsecutiveMatchStreak());
+        performanceHistoryRepository.save(history);
+    }
+
+    private int initialMoveTimeLimit(Difficulty difficulty, boolean focusMode) {
+        Map<Difficulty, Integer> limits = focusMode
+                ? FOCUS_MOVE_LIMIT_SECONDS : BASE_MOVE_LIMIT_SECONDS;
+        return limits.getOrDefault(difficulty, 10);
+    }
+
+    private boolean isPreviewActive(GameSession session) {
+        return session.getPreviewEndsAt() != null
+                && Instant.now().isBefore(session.getPreviewEndsAt());
+    }
+
+    private boolean isMoveExpired(GameSession session) {
+        return session.getMoveDeadlineAt() != null
+                && !Instant.now().isBefore(session.getMoveDeadlineAt());
+    }
+
+    private void expireTimedOutMove(GameSession session, List<CardState> board, CardState firstCard) {
+        firstCard.setFlipped(false);
+        session.setBoardStateJson(toJson(board));
+        session.setFirstFlippedCardId(-1);
+        session.setFirstFlipAt(null);
+        session.setMoveDeadlineAt(null);
+        session.setMistakeCount(session.getMistakeCount() + 1);
+        session.setCurrentConsecutiveMatchStreak(0);
+        sessionRepository.save(session);
+    }
+
+    private long reactionTimeMillis(Instant firstFlipAt, Instant secondFlipAt) {
+        if (firstFlipAt == null) return 0L;
+        return Math.max(0L, Duration.between(firstFlipAt, secondFlipAt).toMillis());
+    }
+
+    private void recordCompletedMove(GameSession session, int totalPairs, long reactionTimeMillis) {
+        int moves = session.getMoves();
+        long previousAverage = session.getAverageReactionTimeMillis();
+        session.setAverageReactionTimeMillis(
+                moves == 0 ? reactionTimeMillis
+                        : ((previousAverage * (moves - 1L)) + reactionTimeMillis) / moves);
+        session.setAccuracyPercent(moves == 0 ? 0.0
+                : (session.getMoves() - session.getMistakeCount()) * 100.0 / moves);
+        updateAdaptiveDifficulty(session);
+    }
+
+    private void updateAdaptiveDifficulty(GameSession session) {
+        if (session.getMoves() < 3) return;
+        int limit = session.getMoveTimeLimitSeconds();
+        long average = session.getAverageReactionTimeMillis();
+        int baseLimit = initialMoveTimeLimit(session.getDifficulty(), session.isFocusMode());
+        int maxLimit = baseLimit + (session.isFocusMode() ? 2 : 4);
+        if (session.getAccuracyPercent() >= 75.0 && average <= limit * 600L) {
+            session.setMoveTimeLimitSeconds(Math.max(3, limit - 1));
+        } else if (session.getAccuracyPercent() < 50.0 || average > limit * 900L) {
+            session.setMoveTimeLimitSeconds(Math.min(maxLimit, limit + 1));
+        }
+    }
+
     /** Maps a GameSession + board list to the standard response DTO. */
     private GameSessionResponse buildResponse(GameSession session, List<CardState> board) {
         GameSessionResponse resp = new GameSessionResponse();
@@ -487,7 +638,20 @@ public class GameService {
         resp.setStatus(session.getStatus().name());
         resp.setHintsUsed(session.getHintsUsed());
         resp.setScore(session.getScore());
-        resp.setBoard(board.stream().map(this::toCardDto).collect(Collectors.toList()));
+        resp.setAccuracyPercent(session.getAccuracyPercent());
+        resp.setCurrentStreak(session.getCurrentConsecutiveMatchStreak());
+        resp.setMaxStreak(session.getMaxConsecutiveMatchStreak());
+        resp.setAverageReactionTimeMillis(session.getAverageReactionTimeMillis());
+        resp.setConcentrationScore(session.getConcentrationScore());
+        resp.setPreviewing(isPreviewActive(session));
+        resp.setPreviewEndsAt(session.getPreviewEndsAt());
+        resp.setFocusMode(session.isFocusMode());
+        resp.setMoveTimeLimitSeconds(session.getMoveTimeLimitSeconds());
+        resp.setMoveDeadlineAt(session.getMoveDeadlineAt());
+        boolean revealPreview = resp.isPreviewing();
+        resp.setBoard(board.stream()
+            .map(card -> toCardDto(card, revealPreview))
+            .collect(Collectors.toList()));
         return resp;
     }
 
@@ -495,8 +659,8 @@ public class GameService {
      * Converts a CardState to its DTO, masking the symbolKey if the card is
      * face-down and not yet matched (i.e., hidden from the player).
      */
-    private CardDto toCardDto(CardState c) {
-        String symbol = (c.isFlipped() || c.isMatched()) ? c.getSymbolKey() : null;
+    private CardDto toCardDto(CardState c, boolean revealAll) {
+        String symbol = (revealAll || c.isFlipped() || c.isMatched()) ? c.getSymbolKey() : null;
         return new CardDto(c.getCardId(), symbol, c.isFlipped(), c.isMatched());
     }
 

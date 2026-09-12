@@ -60,6 +60,39 @@ public class GameSession {
     @Column(nullable = false)
     private int score = 0;
 
+    /** Average active-play time per completed two-card move, in milliseconds. */
+    private Long averageReactionTimeMillis = 0L;
+
+    /** Number of two-card moves that did not produce a match. */
+    private Integer mistakeCount = 0;
+
+    /** Number of consecutive matching moves at the current point in the game. */
+    private Integer currentConsecutiveMatchStreak = 0;
+
+    /** Highest consecutive matching-move streak reached in this session. */
+    private Integer maxConsecutiveMatchStreak = 0;
+
+    /** Placeholder concentration score on a 0-100 scale. */
+    private Double concentrationScore = 100.0;
+
+    /** Server-owned end of the initial memory preview window. */
+    private Instant previewEndsAt;
+
+    /** Server timestamp of the first card in the current two-card attempt. */
+    private Instant firstFlipAt;
+
+    /** Server-owned deadline for the current two-card attempt. */
+    private Instant moveDeadlineAt;
+
+    /** Enables the stricter focus-mode move timer. */
+    private Boolean focusMode = false;
+
+    /** Adaptive per-move limit in seconds. */
+    private Integer moveTimeLimitSeconds = 0;
+
+    /** Correct matches divided by completed two-card attempts, on a 0-100 scale. */
+    private Double accuracyPercent = 0.0;
+
     // ── Server-side timer fields ──────────────────────────────────────────────
 
     /** When this session was last started (or re-started after a restart). */
@@ -131,6 +164,61 @@ public class GameSession {
 
     public int getScore() { return score; }
     public void setScore(int score) { this.score = score; }
+
+    public Long getAverageReactionTimeMillis() {
+        return averageReactionTimeMillis == null ? 0L : averageReactionTimeMillis;
+    }
+    public void setAverageReactionTimeMillis(Long averageReactionTimeMillis) {
+        this.averageReactionTimeMillis = averageReactionTimeMillis;
+    }
+
+    public Integer getMistakeCount() { return mistakeCount == null ? 0 : mistakeCount; }
+    public void setMistakeCount(Integer mistakeCount) { this.mistakeCount = mistakeCount; }
+
+    public Integer getCurrentConsecutiveMatchStreak() {
+        return currentConsecutiveMatchStreak == null ? 0 : currentConsecutiveMatchStreak;
+    }
+    public void setCurrentConsecutiveMatchStreak(Integer currentConsecutiveMatchStreak) {
+        this.currentConsecutiveMatchStreak = currentConsecutiveMatchStreak;
+    }
+
+    public Integer getMaxConsecutiveMatchStreak() {
+        return maxConsecutiveMatchStreak == null ? 0 : maxConsecutiveMatchStreak;
+    }
+    public void setMaxConsecutiveMatchStreak(Integer maxConsecutiveMatchStreak) {
+        this.maxConsecutiveMatchStreak = maxConsecutiveMatchStreak;
+    }
+
+    public Double getConcentrationScore() {
+        return concentrationScore == null ? 0.0 : concentrationScore;
+    }
+    public void setConcentrationScore(Double concentrationScore) {
+        this.concentrationScore = concentrationScore;
+    }
+
+    public Instant getPreviewEndsAt() { return previewEndsAt; }
+    public void setPreviewEndsAt(Instant previewEndsAt) { this.previewEndsAt = previewEndsAt; }
+
+    public Instant getFirstFlipAt() { return firstFlipAt; }
+    public void setFirstFlipAt(Instant firstFlipAt) { this.firstFlipAt = firstFlipAt; }
+
+    public Instant getMoveDeadlineAt() { return moveDeadlineAt; }
+    public void setMoveDeadlineAt(Instant moveDeadlineAt) { this.moveDeadlineAt = moveDeadlineAt; }
+
+    public boolean isFocusMode() { return Boolean.TRUE.equals(focusMode); }
+    public void setFocusMode(Boolean focusMode) { this.focusMode = focusMode; }
+
+    public Integer getMoveTimeLimitSeconds() {
+        return moveTimeLimitSeconds == null ? 0 : moveTimeLimitSeconds;
+    }
+    public void setMoveTimeLimitSeconds(Integer moveTimeLimitSeconds) {
+        this.moveTimeLimitSeconds = moveTimeLimitSeconds;
+    }
+
+    public Double getAccuracyPercent() {
+        return accuracyPercent == null ? 0.0 : accuracyPercent;
+    }
+    public void setAccuracyPercent(Double accuracyPercent) { this.accuracyPercent = accuracyPercent; }
 
     public Instant getStartedAt() { return startedAt; }
     public void setStartedAt(Instant startedAt) { this.startedAt = startedAt; }

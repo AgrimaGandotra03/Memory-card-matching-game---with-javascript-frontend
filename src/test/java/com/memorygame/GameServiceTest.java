@@ -7,6 +7,7 @@ import com.memorygame.dto.ScoreRecordResponse;
 import com.memorygame.model.*;
 import com.memorygame.repository.GameSessionRepository;
 import com.memorygame.repository.PlayerProfileRepository;
+import com.memorygame.repository.PerformanceHistoryRepository;
 import com.memorygame.repository.ScoreRecordRepository;
 import com.memorygame.repository.UserRepository;
 import com.memorygame.service.GameService;
@@ -35,6 +36,9 @@ class GameServiceTest {
 
     @Autowired
     private ScoreRecordRepository scoreRepository;
+
+    @Autowired
+    private PerformanceHistoryRepository performanceHistoryRepository;
 
     @Autowired
     private PlayerProfileRepository profileRepository;
@@ -76,6 +80,20 @@ class GameServiceTest {
 
         GameSessionResponse hardSession = gameService.startNewGame(testUser.getId(), Difficulty.HARD, "space");
         assertEquals(64, hardSession.getBoard().size()); // 8x8
+    }
+
+    @Test
+    void testFocusModeExposesAdaptiveMoveTimer() {
+        GameSessionResponse session = gameService.startNewGame(
+                testUser.getId(), Difficulty.EASY, "animals", true);
+
+        assertTrue(session.isFocusMode());
+        assertEquals(6, session.getMoveTimeLimitSeconds());
+        assertFalse(session.isPreviewing());
+
+        GameSessionResponse firstFlip = gameService.flipCard(session.getSessionId(), 0);
+        assertNotNull(firstFlip.getMoveDeadlineAt());
+        assertEquals(0.0, firstFlip.getAccuracyPercent());
     }
 
     @Test
@@ -174,6 +192,13 @@ class GameServiceTest {
             assertEquals(testUser.getId(), history.get(0).getUserId());
             assertEquals("EASY", history.get(0).getDifficulty());
             assertEquals(8, history.get(0).getMoves());
+
+                List<PerformanceHistory> performanceHistory =
+                    performanceHistoryRepository.findByPlayerIdOrderBySessionDateDesc(testUser.getId());
+                assertEquals(1, performanceHistory.size());
+                assertEquals(testUser.getId(), performanceHistory.get(0).getPlayer().getId());
+                assertEquals(100.0, performanceHistory.get(0).getAccuracyPercent());
+                assertEquals(8, performanceHistory.get(0).getMaxStreak());
         } catch (Exception e) {
             fail("Exception during board solving: " + e.getMessage());
         }

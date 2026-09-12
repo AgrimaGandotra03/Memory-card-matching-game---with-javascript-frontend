@@ -21,10 +21,12 @@ C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-g
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\Difficulty.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\GameSession.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\GameStatus.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\PerformanceHistory.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\PlayerProfile.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\ScoreRecord.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\model\User.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\repository\GameSessionRepository.java
+C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\repository\PerformanceHistoryRepository.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\repository\PlayerProfileRepository.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\repository\ScoreRecordRepository.java
 C:\Users\Kriti Gandotra\Desktop\Memory card matching game\Memory-card-matching-game---with-javascript-frontend\src\main\java\com\memorygame\repository\UserRepository.java

@@ -3,9 +3,11 @@ com\memorygame\repository\ScoreRecordRepository.class
 com\memorygame\dto\ErrorResponse.class
 com\memorygame\model\PlayerProfile.class
 com\memorygame\service\AuthService.class
+com\memorygame\model\PerformanceHistory.class
 com\memorygame\config\SecurityConfig.class
 com\memorygame\dto\ScoreRecordResponse.class
 com\memorygame\controller\ScoreController.class
+com\memorygame\repository\PerformanceHistoryRepository.class
 com\memorygame\controller\ProfileController.class
 com\memorygame\dto\AuthRequest.class
 com\memorygame\dto\ProfileResponse.class

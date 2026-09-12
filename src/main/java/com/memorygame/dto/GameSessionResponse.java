@@ -1,5 +1,6 @@
 package com.memorygame.dto;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -19,6 +20,17 @@ public class GameSessionResponse {
     private String status;       // "ACTIVE" | "PAUSED" | "WON" | "LOST"
     private int hintsUsed;
     private int score;           // 0 until the game is WON
+
+    private double accuracyPercent;
+    private int currentStreak;
+    private int maxStreak;
+    private long averageReactionTimeMillis;
+    private double concentrationScore;
+    private boolean previewing;
+    private Instant previewEndsAt;
+    private boolean focusMode;
+    private int moveTimeLimitSeconds;
+    private Instant moveDeadlineAt;
 
     /** The board in display order; symbolKey is null for hidden cards. */
     private List<CardDto> board;
@@ -76,6 +88,42 @@ public class GameSessionResponse {
 
     public int getScore() { return score; }
     public void setScore(int score) { this.score = score; }
+
+    public double getAccuracyPercent() { return accuracyPercent; }
+    public void setAccuracyPercent(double accuracyPercent) { this.accuracyPercent = accuracyPercent; }
+
+    public int getCurrentStreak() { return currentStreak; }
+    public void setCurrentStreak(int currentStreak) { this.currentStreak = currentStreak; }
+
+    public int getMaxStreak() { return maxStreak; }
+    public void setMaxStreak(int maxStreak) { this.maxStreak = maxStreak; }
+
+    public long getAverageReactionTimeMillis() { return averageReactionTimeMillis; }
+    public void setAverageReactionTimeMillis(long averageReactionTimeMillis) {
+        this.averageReactionTimeMillis = averageReactionTimeMillis;
+    }
+
+    public double getConcentrationScore() { return concentrationScore; }
+    public void setConcentrationScore(double concentrationScore) {
+        this.concentrationScore = concentrationScore;
+    }
+
+    public boolean isPreviewing() { return previewing; }
+    public void setPreviewing(boolean previewing) { this.previewing = previewing; }
+
+    public Instant getPreviewEndsAt() { return previewEndsAt; }
+    public void setPreviewEndsAt(Instant previewEndsAt) { this.previewEndsAt = previewEndsAt; }
+
+    public boolean isFocusMode() { return focusMode; }
+    public void setFocusMode(boolean focusMode) { this.focusMode = focusMode; }
+
+    public int getMoveTimeLimitSeconds() { return moveTimeLimitSeconds; }
+    public void setMoveTimeLimitSeconds(int moveTimeLimitSeconds) {
+        this.moveTimeLimitSeconds = moveTimeLimitSeconds;
+    }
+
+    public Instant getMoveDeadlineAt() { return moveDeadlineAt; }
+    public void setMoveDeadlineAt(Instant moveDeadlineAt) { this.moveDeadlineAt = moveDeadlineAt; }
 
     public List<CardDto> getBoard() { return board; }
     public void setBoard(List<CardDto> board) { this.board = board; }

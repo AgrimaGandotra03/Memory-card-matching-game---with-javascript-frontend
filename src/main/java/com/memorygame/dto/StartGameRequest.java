@@ -20,6 +20,9 @@ public class StartGameRequest {
     /** Falls back to "animals" if omitted or unrecognised. */
     private String theme = "animals";
 
+    /** Optional cognitive-training mode; omitted requests remain standard games. */
+    private boolean focusMode = false;
+
     // ---------- getters & setters ----------
 
     public Long getUserId() { return userId; }
@@ -30,4 +33,7 @@ public class StartGameRequest {
 
     public String getTheme() { return theme; }
     public void setTheme(String theme) { this.theme = theme; }
+
+    public boolean isFocusMode() { return focusMode; }
+    public void setFocusMode(boolean focusMode) { this.focusMode = focusMode; }
 }
