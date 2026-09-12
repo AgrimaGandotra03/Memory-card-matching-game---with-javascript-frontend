@@ -454,7 +454,15 @@ const GameApp = {
     if (!this.user) return;
     try {
       const date = new Date().toISOString().slice(0, 10);
-      const session = await API.startGame(this.user.userId, "EASY", "animals", false, "CLASSIC", true, date);
+      const session = await API.startGame(
+        this.user.userId,
+        "EASY",
+        "animals",
+        false,
+        "CLASSIC",
+        true,
+        date,
+      );
       this.setGameSession(session);
       UI.showScreen("game");
       UI.showToast("Today's fixed challenge is ready.", "info");

@@ -93,7 +93,15 @@ const API = {
   ) {
     return this.request("/api/game/start", {
       method: "POST",
-      body: JSON.stringify({ userId, difficulty, theme, focusMode, mode, dailyChallenge, dailyChallengeDate }),
+      body: JSON.stringify({
+        userId,
+        difficulty,
+        theme,
+        focusMode,
+        mode,
+        dailyChallenge,
+        dailyChallengeDate,
+      }),
     });
   },
 
