@@ -945,11 +945,55 @@ select:focus {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
+
+  .progress-chart-section {
+    margin-top: 28px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border-glass);
+  }
+  .progress-chart-section h3 {
+    font-family: var(--font-display);
+    margin-bottom: 12px;
+  }
+  #progress-chart {
+    width: 100%;
+    height: 260px;
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+  }
+  .chart-legend {
+    display: flex;
+    gap: 18px;
+    margin-top: 10px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+  .legend-accuracy::before,
+  .legend-concentration::before {
+    content: "";
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 6px;
+    background: var(--accent-cyan);
+  }
+  .legend-concentration::before {
+    background: var(--accent-gold);
+  }
   font-size: 0.9rem;
 }
 
 .scores-table th {
   padding: 12px;
+
+  .win-report-extra,
+  .win-stat-average {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+  }
   border-bottom: 2px solid var(--border-glass);
   color: var(--text-muted);
   font-weight: 600;

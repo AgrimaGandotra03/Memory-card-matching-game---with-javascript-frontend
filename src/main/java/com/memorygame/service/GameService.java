@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.memorygame.dto.CardDto;
 import com.memorygame.dto.GameSessionResponse;
 import com.memorygame.dto.HintResponse;
+import com.memorygame.dto.PerformanceHistoryResponse;
 import com.memorygame.dto.ScoreRecordResponse;
+import com.memorygame.dto.SessionPerformanceReport;
 import com.memorygame.model.*;
 import com.memorygame.repository.GameSessionRepository;
 import com.memorygame.repository.PerformanceHistoryRepository;
@@ -219,6 +221,7 @@ public class GameService {
 
         if (modeStrategy.hasExpired(session, Instant.now())) {
             modeStrategy.expire(session);
+            finalizePerformance(session, board.size() / 2);
             sessionRepository.save(session);
             GameSessionResponse expired = buildResponse(session, board);
             expired.setMessage("Time expired. The challenge is over.");
@@ -239,7 +242,9 @@ public class GameService {
             session.setCumulativeScore(session.getCumulativeScore() + levelScore);
             session.setScore(session.getCumulativeScore());
             writeScoreRecord(session, computeElapsedSeconds(session));
-            writePerformanceHistory(session, board.size() / 2, computeElapsedSeconds(session));
+            finalizePerformance(session, board.size() / 2);
+            } else if (result.isLostGame()) {
+                finalizePerformance(session, board.size() / 2);
             }
             sessionRepository.save(session);
             GameSessionResponse sequenceResponse = buildResponse(session, board);
@@ -325,7 +330,7 @@ public class GameService {
                         session.setStatus(GameStatus.WON);
                         updatePerformanceMetrics(session, board.size() / 2, elapsed);
                         writeScoreRecord(session, elapsed);
-                        writePerformanceHistory(session, board.size() / 2, elapsed);
+                        finalizePerformance(session, board.size() / 2);
                         wonGame = true;
                     }
                 }
@@ -512,9 +517,10 @@ public class GameService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No active or paused game found for user " + userId + ". Start a new game first."));
 
-            expireModeIfNeeded(session);
+        List<CardState> loadedBoard = fromJson(session.getBoardStateJson());
+        expireModeIfNeeded(session, loadedBoard.size() / 2);
 
-        GameSessionResponse resp = buildResponse(session, fromJson(session.getBoardStateJson()));
+        GameSessionResponse resp = buildResponse(session, loadedBoard);
         resp.setMessage("Loaded saved game (status: " + session.getStatus()
                 + ", elapsed: " + resp.getElapsedSeconds() + "s).");
         return resp;
@@ -526,8 +532,9 @@ public class GameService {
     @Transactional
     public GameSessionResponse getSession(Long sessionId) {
         GameSession session = findSession(sessionId);
-        expireModeIfNeeded(session);
-        return buildResponse(session, fromJson(session.getBoardStateJson()));
+        List<CardState> board = fromJson(session.getBoardStateJson());
+        expireModeIfNeeded(session, board.size() / 2);
+        return buildResponse(session, board);
     }
 
     /**
@@ -559,9 +566,12 @@ public class GameService {
 
     /** Returns completed cognitive-performance snapshots for a player, newest first. */
     @Transactional(readOnly = true)
-    public List<PerformanceHistory> getPerformanceHistory(Long userId) {
+    public List<PerformanceHistoryResponse> getPerformanceHistory(Long userId) {
         findUser(userId);
-        return performanceHistoryRepository.findByPlayerIdOrderBySessionDateDesc(userId);
+        return performanceHistoryRepository.findByPlayerIdOrderBySessionDateDesc(userId)
+            .stream()
+            .map(this::toPerformanceHistoryResponse)
+            .collect(Collectors.toList());
     }
 
     // =========================================================================
@@ -629,13 +639,25 @@ public class GameService {
     }
 
     private void updatePerformanceMetrics(GameSession session, int totalPairs, long elapsedSeconds) {
-        session.setConcentrationScore(Math.max(0.0,
-            Math.min(100.0, session.getAccuracyPercent() - (elapsedSeconds * 0.1))));
+        double accuracyScore = Math.max(0.0, Math.min(100.0, session.getAccuracyPercent()));
+        double reactionScore = session.getAverageReactionTimeMillis() == 0 ? 100.0
+            : Math.max(0.0, 100.0 - session.getAverageReactionTimeMillis() / 100.0);
+        double mistakeRate = session.getMoves() == 0 ? 0.0
+            : session.getMistakeCount() * 100.0 / session.getMoves();
+        double mistakeScore = Math.max(0.0, 100.0 - mistakeRate);
+        session.setConcentrationScore(
+            Math.round((accuracyScore * 0.5 + reactionScore * 0.3 + mistakeScore * 0.2) * 10.0) / 10.0);
     }
 
-    private void writePerformanceHistory(GameSession session, int totalPairs, long elapsedSeconds) {
+        private void finalizePerformance(GameSession session, int totalPairs) {
+        if (session.isPerformanceRecorded()) return;
+        long elapsedSeconds = computeElapsedSeconds(session);
+        updatePerformanceMetrics(session, totalPairs, elapsedSeconds);
         int moves = session.getMoves();
-        double accuracy = moves == 0 ? 0.0 : (totalPairs * 100.0) / moves;
+        double accuracy = moves == 0 ? session.getAccuracyPercent()
+            : Math.max(0.0, Math.min(100.0,
+            (moves - session.getMistakeCount()) * 100.0 / moves));
+        session.setAccuracyPercent(accuracy);
         PerformanceHistory history = new PerformanceHistory(
                 session.getUser(),
                 java.time.LocalDateTime.now(),
@@ -643,8 +665,25 @@ public class GameService {
                 accuracy,
                 elapsedSeconds,
                 session.getMistakeCount(),
-                session.getMaxConsecutiveMatchStreak());
-        performanceHistoryRepository.save(history);
+                session.getMaxConsecutiveMatchStreak(),
+                session.getConcentrationScore());
+        history = performanceHistoryRepository.save(history);
+        session.setPerformanceHistoryId(history.getId());
+        session.setPerformanceRecorded(true);
+    }
+
+    private PerformanceHistoryResponse toPerformanceHistoryResponse(PerformanceHistory history) {
+        PerformanceHistoryResponse response = new PerformanceHistoryResponse();
+        response.setId(history.getId());
+        response.setPlayerId(history.getPlayer().getId());
+        response.setSessionDate(history.getSessionDate());
+        response.setFinalScore(history.getFinalScore());
+        response.setAccuracyPercent(history.getAccuracyPercent());
+        response.setTotalTimeSeconds(history.getTotalTimeSeconds());
+        response.setMistakeCount(history.getMistakeCount());
+        response.setMaxStreak(history.getMaxStreak());
+        response.setConcentrationScore(history.getConcentrationScore());
+        return response;
     }
 
     private int initialMoveTimeLimit(Difficulty difficulty, boolean focusMode) {
@@ -653,10 +692,11 @@ public class GameService {
         return limits.getOrDefault(difficulty, 10);
     }
 
-    private void expireModeIfNeeded(GameSession session) {
+    private void expireModeIfNeeded(GameSession session, int totalPairs) {
         GameModeStrategy strategy = modeStrategyRegistry.forMode(session.getMode());
         if (strategy.hasExpired(session, Instant.now())) {
             strategy.expire(session);
+            finalizePerformance(session, totalPairs);
             sessionRepository.save(session);
         }
     }
@@ -780,7 +820,33 @@ public class GameService {
         resp.setBoard(board.stream()
             .map(card -> toCardDto(card, revealPreview))
             .collect(Collectors.toList()));
+        if (session.getStatus() == GameStatus.WON || session.getStatus() == GameStatus.LOST) {
+            resp.setPerformanceReport(buildPerformanceReport(session));
+        }
         return resp;
+    }
+
+    private SessionPerformanceReport buildPerformanceReport(GameSession session) {
+        SessionPerformanceReport report = new SessionPerformanceReport();
+        report.setScore(session.getScore());
+        report.setAccuracyPercent(session.getAccuracyPercent());
+        report.setTimeTakenSeconds(computeElapsedSeconds(session));
+        report.setMistakeCount(session.getMistakeCount());
+        report.setMaxStreak(session.getMaxConsecutiveMatchStreak());
+        report.setConcentrationScore(session.getConcentrationScore());
+
+        List<PerformanceHistory> previous = performanceHistoryRepository
+                .findByPlayerIdOrderBySessionDateDesc(session.getUser().getId())
+                .stream()
+                .filter(history -> !Objects.equals(history.getId(), session.getPerformanceHistoryId()))
+                .collect(Collectors.toList());
+        if (!previous.isEmpty()) {
+            report.setAverageScore(previous.stream().mapToInt(PerformanceHistory::getFinalScore).average().orElse(0.0));
+            report.setAverageAccuracyPercent(previous.stream().mapToDouble(PerformanceHistory::getAccuracyPercent).average().orElse(0.0));
+            report.setAverageTimeTakenSeconds(previous.stream().mapToLong(PerformanceHistory::getTotalTimeSeconds).average().orElse(0.0));
+            report.setAverageConcentrationScore(previous.stream().mapToDouble(PerformanceHistory::getConcentrationScore).average().orElse(0.0));
+        }
+        return report;
     }
 
     /**

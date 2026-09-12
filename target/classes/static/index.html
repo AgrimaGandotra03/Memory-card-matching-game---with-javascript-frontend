@@ -484,10 +484,11 @@
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Difficulty</th>
                   <th>Score</th>
-                  <th>Moves</th>
-                  <th>Time</th>
+                  <th>Accuracy</th>
+                  <th>Mistakes</th>
+                  <th>Streak</th>
+                  <th>Concentration</th>
                   <th>Date</th>
                 </tr>
               </thead>
@@ -495,6 +496,19 @@
                 <!-- Populated dynamically from /api/scores/{userId} -->
               </tbody>
             </table>
+          </div>
+          <div class="progress-chart-section">
+            <h3>Memory Progress</h3>
+            <canvas
+              id="progress-chart"
+              width="720"
+              height="260"
+              aria-label="Accuracy and concentration over time"
+            ></canvas>
+            <div class="chart-legend">
+              <span class="legend-accuracy">Accuracy</span
+              ><span class="legend-concentration">Concentration</span>
+            </div>
           </div>
         </div>
       </main>
@@ -527,7 +541,7 @@
             </div>
           </div>
           <div class="win-stat-card">
-            <div class="win-stat-label">Moves</div>
+            <div class="win-stat-label">Accuracy</div>
             <div id="win-stat-moves" class="win-stat-value">0</div>
           </div>
           <div class="win-stat-card">
@@ -536,6 +550,13 @@
           </div>
         </div>
 
+        <div class="win-report-extra">
+          Mistakes: <span id="win-stat-mistakes">0</span> · Best streak:
+          <span id="win-stat-streak">0</span>
+        </div>
+        <div id="win-stat-average" class="win-stat-average">
+          No previous sessions to compare yet.
+        </div>
         <div
           style="
             font-size: 0.85rem;

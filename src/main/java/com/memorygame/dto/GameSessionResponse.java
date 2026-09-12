@@ -41,6 +41,7 @@ public class GameSessionResponse {
     private List<Integer> sequencePlaybackCardIds;
     private int sequenceExpectedPosition;
     private boolean levelCompleted;
+    private SessionPerformanceReport performanceReport;
 
     /** The board in display order; symbolKey is null for hidden cards. */
     private List<CardDto> board;
@@ -174,6 +175,11 @@ public class GameSessionResponse {
 
     public boolean isLevelCompleted() { return levelCompleted; }
     public void setLevelCompleted(boolean levelCompleted) { this.levelCompleted = levelCompleted; }
+
+    public SessionPerformanceReport getPerformanceReport() { return performanceReport; }
+    public void setPerformanceReport(SessionPerformanceReport performanceReport) {
+        this.performanceReport = performanceReport;
+    }
 
     public List<CardDto> getBoard() { return board; }
     public void setBoard(List<CardDto> board) { this.board = board; }

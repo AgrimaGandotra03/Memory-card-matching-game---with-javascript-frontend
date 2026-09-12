@@ -261,6 +261,7 @@ const GameApp = {
 
       // Load high scores
       await this.loadScoreHistory();
+      await this.loadPerformanceHistory();
       UI.showScreen("profile");
     } catch (err) {
       UI.showToast("Failed to load profile: " + err.message, "error");
@@ -289,12 +290,12 @@ const GameApp = {
 
   async loadScoreHistory() {
     try {
-      const scores = await API.getScoreHistory(this.user.userId);
+      const scores = await API.getPerformanceHistory(this.user.userId);
       const tbody = document.getElementById("scores-table-body");
       if (!tbody) return;
 
       if (!scores || scores.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-muted); padding: 24px;">No completed games yet. Go play a match!</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-muted); padding: 24px;">No completed games yet. Go play a match!</td></tr>`;
         return;
       }
 
@@ -303,11 +304,12 @@ const GameApp = {
           (s, idx) => `
                 <tr>
                     <td style="font-weight: 700; color: var(--primary);">#${idx + 1}</td>
-                    <td><span class="user-badge" style="display:inline-block;">${s.difficulty}</span></td>
-                    <td style="font-weight: 700; color: var(--accent-cyan); font-family: var(--font-display);">${s.score}</td>
-                    <td>${s.moves}</td>
-                    <td>${UI.formatTime(s.timeTakenSeconds)}</td>
-                    <td style="color: var(--text-muted); font-size: 0.8rem;">${new Date(s.playedAt).toLocaleDateString()}</td>
+                    <td style="font-weight: 700; color: var(--accent-cyan); font-family: var(--font-display);">${s.finalScore}</td>
+                    <td>${Number(s.accuracyPercent).toFixed(0)}%</td>
+                    <td>${s.mistakeCount}</td>
+                    <td>${s.maxStreak}</td>
+                    <td>${Number(s.concentrationScore).toFixed(0)}</td>
+                    <td style="color: var(--text-muted); font-size: 0.8rem;">${new Date(s.sessionDate).toLocaleDateString()}</td>
                 </tr>
             `,
         )
@@ -315,6 +317,59 @@ const GameApp = {
     } catch (err) {
       console.error("Failed to load score history:", err);
     }
+  },
+
+  async loadPerformanceHistory() {
+    try {
+      const history = await API.getPerformanceHistory(this.user.userId);
+      this.drawProgressChart(history);
+    } catch (err) {
+      console.error("Failed to load performance history:", err);
+    }
+  },
+
+  drawProgressChart(history) {
+    const canvas = document.getElementById("progress-chart");
+    if (!canvas || !history?.length) return;
+    const context = canvas.getContext("2d");
+    const width = canvas.clientWidth || 720;
+    const height = 260;
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.clearRect(0, 0, width, height);
+    const points = [...history].reverse();
+    const x = (index) =>
+      36 + index * ((width - 60) / Math.max(1, points.length - 1));
+    const y = (value) =>
+      height - 28 - (Math.max(0, Math.min(100, value)) / 100) * (height - 52);
+    context.strokeStyle = "rgba(255,255,255,.12)";
+    [0, 25, 50, 75, 100].forEach((value) => {
+      context.beginPath();
+      context.moveTo(32, y(value));
+      context.lineTo(width - 18, y(value));
+      context.stroke();
+    });
+    const drawLine = (key, color) => {
+      context.beginPath();
+      points.forEach((point, index) =>
+        index
+          ? context.lineTo(x(index), y(point[key]))
+          : context.moveTo(x(index), y(point[key])),
+      );
+      context.strokeStyle = color;
+      context.lineWidth = 3;
+      context.stroke();
+      points.forEach((point, index) => {
+        context.fillStyle = color;
+        context.beginPath();
+        context.arc(x(index), y(point[key]), 4, 0, Math.PI * 2);
+        context.fill();
+      });
+    };
+    drawLine("accuracyPercent", "#22d3ee");
+    drawLine("concentrationScore", "#f59e0b");
   },
 
   // ── Game Management ───────────────────────────────────────────────────────
@@ -502,6 +557,13 @@ const GameApp = {
       const updatedSession = await API.flipCard(this.session.sessionId, cardId);
       this.session = updatedSession;
       this.updateHUD(updatedSession);
+
+      if (updatedSession.status === "LOST") {
+        this.stopTimer();
+        UI.showResultsModal(updatedSession, false);
+        this.isProcessing = false;
+        return;
+      }
 
       if (updatedSession.mode === "SEQUENCE_MEMORY") {
         this.renderBoard(updatedSession);
@@ -720,6 +782,8 @@ const GameApp = {
       const refreshed = await API.getSession(this.session.sessionId);
       this.setGameSession(refreshed);
       if (refreshed.status === "LOST") {
+        this.stopTimer();
+        setTimeout(() => UI.showResultsModal(refreshed, false), 250);
         UI.showToast("Time expired. Challenge over.", "error");
       }
     } catch (err) {

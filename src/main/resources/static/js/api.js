@@ -143,6 +143,10 @@ const API = {
   async getScoreHistory(userId) {
     return this.request(`/api/scores/${userId}`);
   },
+
+  async getPerformanceHistory(userId) {
+    return this.request(`/api/performance/${userId}`);
+  },
 };
 
 window.API = API;

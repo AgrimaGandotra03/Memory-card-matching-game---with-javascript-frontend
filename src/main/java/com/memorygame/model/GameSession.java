@@ -120,6 +120,11 @@ public class GameSession {
     /** Next sequence index the player must reproduce. */
     private Integer sequencePosition = 0;
 
+    /** Prevents duplicate history rows when a terminal session is polled. */
+    private Boolean performanceRecorded = false;
+
+    private Long performanceHistoryId;
+
     // ── Server-side timer fields ──────────────────────────────────────────────
 
     /** When this session was last started (or re-started after a restart). */
@@ -276,6 +281,12 @@ public class GameSession {
 
     public Integer getSequencePosition() { return sequencePosition == null ? 0 : sequencePosition; }
     public void setSequencePosition(Integer sequencePosition) { this.sequencePosition = sequencePosition; }
+
+    public boolean isPerformanceRecorded() { return Boolean.TRUE.equals(performanceRecorded); }
+    public void setPerformanceRecorded(Boolean performanceRecorded) { this.performanceRecorded = performanceRecorded; }
+
+    public Long getPerformanceHistoryId() { return performanceHistoryId; }
+    public void setPerformanceHistoryId(Long performanceHistoryId) { this.performanceHistoryId = performanceHistoryId; }
 
     public Instant getStartedAt() { return startedAt; }
     public void setStartedAt(Instant startedAt) { this.startedAt = startedAt; }

@@ -34,11 +34,14 @@ public class PerformanceHistory {
     @Column(nullable = false)
     private int maxStreak;
 
+    /** Nullable for rows written before concentration scoring was introduced. */
+    private Double concentrationScore;
+
     public PerformanceHistory() {}
 
     public PerformanceHistory(User player, LocalDateTime sessionDate, int finalScore,
                               double accuracyPercent, long totalTimeSeconds,
-                              int mistakeCount, int maxStreak) {
+                              int mistakeCount, int maxStreak, double concentrationScore) {
         this.player = player;
         this.sessionDate = sessionDate;
         this.finalScore = finalScore;
@@ -46,6 +49,7 @@ public class PerformanceHistory {
         this.totalTimeSeconds = totalTimeSeconds;
         this.mistakeCount = mistakeCount;
         this.maxStreak = maxStreak;
+        this.concentrationScore = concentrationScore;
     }
 
     public Long getId() { return id; }
@@ -70,4 +74,11 @@ public class PerformanceHistory {
 
     public int getMaxStreak() { return maxStreak; }
     public void setMaxStreak(int maxStreak) { this.maxStreak = maxStreak; }
+
+    public double getConcentrationScore() {
+        return concentrationScore == null ? 0.0 : concentrationScore;
+    }
+    public void setConcentrationScore(Double concentrationScore) {
+        this.concentrationScore = concentrationScore;
+    }
 }

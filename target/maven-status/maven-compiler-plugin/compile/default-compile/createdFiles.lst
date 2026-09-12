@@ -1,5 +1,6 @@
 com\memorygame\service\mode\ProgressiveGameModeStrategy.class
 com\memorygame\service\AuthService.class
+com\memorygame\dto\PerformanceHistoryResponse.class
 com\memorygame\model\PerformanceHistory.class
 com\memorygame\controller\ScoreController.class
 com\memorygame\service\mode\GameModeStrategy.class
@@ -14,6 +15,7 @@ com\memorygame\model\GameSession.class
 com\memorygame\controller\GlobalExceptionHandler.class
 com\memorygame\dto\GameSessionResponse.class
 com\memorygame\config\CorsConfig.class
+com\memorygame\controller\PerformanceController.class
 com\memorygame\service\mode\SequenceMemoryGameModeStrategy$1.class
 com\memorygame\model\CardState.class
 com\memorygame\dto\FlipCardRequest.class
@@ -21,6 +23,7 @@ com\memorygame\dto\CardDto.class
 com\memorygame\service\mode\ModeFlipResult.class
 com\memorygame\dto\StartGameRequest.class
 com\memorygame\MemoryGameApplication.class
+com\memorygame\dto\SessionPerformanceReport.class
 com\memorygame\repository\PlayerProfileRepository.class
 com\memorygame\repository\ScoreRecordRepository.class
 com\memorygame\dto\ErrorResponse.class
