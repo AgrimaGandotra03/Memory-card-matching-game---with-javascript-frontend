@@ -37,11 +37,18 @@ public class PerformanceHistory {
     /** Nullable for rows written before concentration scoring was introduced. */
     private Double concentrationScore;
 
+    /** Game mode this session was played in (nullable for rows predating this field). */
+    private String mode;
+
+    /** Difficulty this session was played at (nullable for rows predating this field). */
+    private String difficulty;
+
     public PerformanceHistory() {}
 
     public PerformanceHistory(User player, LocalDateTime sessionDate, int finalScore,
                               double accuracyPercent, long totalTimeSeconds,
-                              int mistakeCount, int maxStreak, double concentrationScore) {
+                              int mistakeCount, int maxStreak, double concentrationScore,
+                              String mode, String difficulty) {
         this.player = player;
         this.sessionDate = sessionDate;
         this.finalScore = finalScore;
@@ -50,6 +57,8 @@ public class PerformanceHistory {
         this.mistakeCount = mistakeCount;
         this.maxStreak = maxStreak;
         this.concentrationScore = concentrationScore;
+        this.mode = mode;
+        this.difficulty = difficulty;
     }
 
     public Long getId() { return id; }
@@ -81,4 +90,10 @@ public class PerformanceHistory {
     public void setConcentrationScore(Double concentrationScore) {
         this.concentrationScore = concentrationScore;
     }
+
+    public String getMode() { return mode; }
+    public void setMode(String mode) { this.mode = mode; }
+
+    public String getDifficulty() { return difficulty; }
+    public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
 }

@@ -74,35 +74,100 @@ public class EngagementService {
                 }).collect(Collectors.toList());
     }
 
+    private static final Map<String, Double> EXPECTED_SECONDS_BY_DIFFICULTY = Map.of(
+            "EASY", 60.0, "MEDIUM", 150.0, "HARD", 300.0);
+    private static final List<String> ALL_MODES = List.of(
+            "CLASSIC", "TIMED_CHALLENGE", "SEQUENCE_MEMORY", "PROGRESSIVE");
+    private static final Map<String, String> MODE_PITCH = Map.of(
+            "CLASSIC", "the classic pair-matching format",
+            "TIMED_CHALLENGE", "matching every pair against a countdown",
+            "SEQUENCE_MEMORY", "watching and repeating a card order",
+            "PROGRESSIVE", "three escalating levels in one run");
+
     @Transactional(readOnly = true)
     public List<RecommendationResponse> getRecommendations(Long userId) {
         findUser(userId);
-        List<PerformanceHistory> recent = historyRepository.findByPlayerIdOrderBySessionDateDesc(userId)
-                .stream().limit(10).collect(Collectors.toList());
-        List<RecommendationResponse> recommendations = new ArrayList<>();
-        if (recent.isEmpty()) {
-            recommendations.add(new RecommendationResponse("Build your baseline", "Complete a few sessions so your training trends can be measured.", "CLASSIC"));
-            return recommendations;
+        List<PerformanceHistory> all = historyRepository.findByPlayerIdOrderBySessionDateDesc(userId);
+        if (all.isEmpty()) {
+            return List.of(new RecommendationResponse("Build your baseline",
+                    "Complete a few sessions so your training trends can be measured.", "CLASSIC"));
         }
-        double accuracy = recent.stream().mapToDouble(PerformanceHistory::getAccuracyPercent).average().orElse(0);
-        double reaction = recent.stream().mapToDouble(h -> h.getTotalTimeSeconds()).average().orElse(0);
-        if (accuracy < 70) {
-            recommendations.add(new RecommendationResponse("Sharpen accuracy", "Your recent accuracy is below 70%. Slow down and use Focus Mode to reduce mistakes.", "CLASSIC"));
+        List<PerformanceHistory> recent = all.stream().limit(10).collect(Collectors.toList());
+
+        double avgAccuracy = recent.stream().mapToDouble(PerformanceHistory::getAccuracyPercent).average().orElse(0);
+        double avgMistakes = recent.stream().mapToDouble(PerformanceHistory::getMistakeCount).average().orElse(0);
+        double avgStreak = recent.stream().mapToDouble(PerformanceHistory::getMaxStreak).average().orElse(0);
+        double avgConcentration = recent.stream()
+                .mapToDouble(PerformanceHistory::getConcentrationScore).average().orElse(100);
+        // Compares actual time against a difficulty-scaled expectation, since a flat
+        // "over 90 seconds" threshold doesn't mean the same thing on an 8-pair Easy
+        // board as it does on a 32-pair Hard board.
+        double avgTimeRatio = recent.stream()
+                .mapToDouble(h -> h.getTotalTimeSeconds()
+                        / EXPECTED_SECONDS_BY_DIFFICULTY.getOrDefault(
+                                h.getDifficulty() == null ? "MEDIUM" : h.getDifficulty(), 90.0))
+                .average().orElse(1.0);
+
+        List<Object[]> candidates = new ArrayList<>(); // [priority(Integer), RecommendationResponse]
+
+        if (avgConcentration < 55) {
+            candidates.add(new Object[]{100, new RecommendationResponse("Improve focus",
+                    "Your concentration score has been running low. Try Focus Mode to cut down on-screen distractions and steady your pace.",
+                    "CLASSIC")});
         }
-        if (reaction > 90) {
-            recommendations.add(new RecommendationResponse("Train speed", "Your recent sessions are taking over 90 seconds. Try Timed Challenge for shorter decisions.", "TIMED_CHALLENGE"));
+        if (avgAccuracy < 70) {
+            candidates.add(new Object[]{90, new RecommendationResponse("Sharpen accuracy",
+                    String.format("Your recent accuracy is averaging %.0f%%. Slow down and use Focus Mode to reduce mistakes.", avgAccuracy),
+                    "CLASSIC")});
+        } else if (avgMistakes > 6) {
+            candidates.add(new Object[]{80, new RecommendationResponse("Cut down mistakes",
+                    String.format("You're averaging %.0f mistakes per session even with solid accuracy — try using a hint earlier instead of guessing.", avgMistakes),
+                    "CLASSIC")});
         }
-        if (recommendations.isEmpty()) {
-            recommendations.add(new RecommendationResponse("Raise the challenge", "Your recent accuracy is strong. Progressive mode can stretch your memory further.", "PROGRESSIVE"));
+        if (avgTimeRatio > 1.2) {
+            candidates.add(new Object[]{75, new RecommendationResponse("Train speed",
+                    "Your sessions are taking noticeably longer than expected for their difficulty. Try Timed Challenge for shorter, decisive moves.",
+                    "TIMED_CHALLENGE")});
+        }
+        if (avgAccuracy >= 70 && avgStreak < 3) {
+            candidates.add(new Object[]{65, new RecommendationResponse("Build streaks",
+                    "Your accuracy is solid but your match streaks stay short. Focus on remembering pairs you've already seen instead of re-flipping at random.",
+                    "CLASSIC")});
         }
         if (recent.size() >= 4) {
-            double newest = recent.get(0).getAccuracyPercent();
-            double oldest = recent.get(recent.size() - 1).getAccuracyPercent();
-            if (newest > oldest * 1.2) {
-                recommendations.add(new RecommendationResponse("Great momentum", "Your accuracy improved by more than 20% across recent sessions. Try Timed Challenge.", "TIMED_CHALLENGE"));
+            int half = recent.size() / 2;
+            double newerAvg = recent.subList(0, half).stream()
+                    .mapToDouble(PerformanceHistory::getAccuracyPercent).average().orElse(0);
+            double olderAvg = recent.subList(half, recent.size()).stream()
+                    .mapToDouble(PerformanceHistory::getAccuracyPercent).average().orElse(0);
+            if (olderAvg > 0 && newerAvg > olderAvg * 1.15) {
+                candidates.add(new Object[]{60, new RecommendationResponse("Great momentum",
+                        String.format("Your accuracy has climbed from an average of %.0f%% to %.0f%% across your recent sessions. Try Timed Challenge to put that improvement to the test.", olderAvg, newerAvg),
+                        "TIMED_CHALLENGE")});
             }
         }
-        return recommendations.stream().limit(2).collect(Collectors.toList());
+        Set<String> modesPlayed = all.stream()
+                .map(PerformanceHistory::getMode).filter(Objects::nonNull).collect(Collectors.toSet());
+        for (String candidateMode : ALL_MODES) {
+            if (!modesPlayed.contains(candidateMode)) {
+                candidates.add(new Object[]{50, new RecommendationResponse("Try something new",
+                        "You haven't played " + candidateMode.replace('_', ' ').toLowerCase()
+                                + " yet — it's " + MODE_PITCH.getOrDefault(candidateMode, "a different way to train") + ".",
+                        candidateMode)});
+                break; // only surface one untried mode at a time
+            }
+        }
+        if (candidates.isEmpty()) {
+            candidates.add(new Object[]{10, new RecommendationResponse("Raise the challenge",
+                    "Your recent accuracy and pace are strong. Progressive mode can stretch your memory further.",
+                    "PROGRESSIVE")});
+        }
+
+        return candidates.stream()
+                .sorted((a, b) -> (Integer) b[0] - (Integer) a[0])
+                .map(c -> (RecommendationResponse) c[1])
+                .limit(3)
+                .collect(Collectors.toList());
     }
 
     @Transactional

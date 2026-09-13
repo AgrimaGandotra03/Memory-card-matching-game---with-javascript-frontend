@@ -713,7 +713,9 @@ public class GameService {
                 elapsedSeconds,
                 session.getMistakeCount(),
                 session.getMaxConsecutiveMatchStreak(),
-                session.getConcentrationScore());
+                session.getConcentrationScore(),
+                session.getMode() == null ? null : session.getMode().name(),
+                session.getDifficulty() == null ? null : session.getDifficulty().name());
         history = performanceHistoryRepository.save(history);
         session.setPerformanceHistoryId(history.getId());
         session.setPerformanceRecorded(true);
