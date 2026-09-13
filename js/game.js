@@ -563,12 +563,12 @@ const GameApp = {
       `${((session.averageReactionTimeMillis || 0) / 1000).toFixed(1)}s`;
     document.getElementById("hud-move-limit").textContent =
       session.moveTimeLimitSeconds ? `${session.moveTimeLimitSeconds}s` : "--";
+    const level = document.getElementById("hud-level");
+    if (level) level.textContent = session.level || 1;
     document.getElementById("hud-timer").textContent =
       session.mode === "TIMED_CHALLENGE"
         ? UI.formatTime(session.timeRemainingSeconds || 0)
         : UI.formatTime(session.elapsedSeconds);
-    const level = document.getElementById("hud-level");
-    if (level) level.textContent = session.level || 1;
 
     const statusBanner = document.getElementById("status-banner");
     if (statusBanner && session.message) {
@@ -640,7 +640,10 @@ const GameApp = {
       }
 
       if (updatedSession.levelCompleted) {
-        this.renderBoard(updatedSession);
+        // Use setGameSession (not a plain renderBoard) so the new level's
+        // memory-preview countdown actually starts — otherwise the "all
+        // cards revealed" preview state renders once and never advances.
+        this.setGameSession(updatedSession);
         this.isProcessing = false;
         UI.showToast(
           `Level ${updatedSession.level - 1} complete. Level ${updatedSession.level} begins!`,
@@ -838,11 +841,27 @@ const GameApp = {
 
   async pollTimedSession() {
     if (!this.session || this.session.mode !== "TIMED_CHALLENGE") return;
+    // Never refresh mid-move: a card flip is in flight (or its NO_MATCH
+    // animation is still playing), and overwriting this.session/the board
+    // now would clobber that in-progress state with a stale server snapshot,
+    // desyncing the visible board from what the server thinks is flipped.
+    if (this.isProcessing) return;
     try {
       const refreshed = await API.getSession(this.session.sessionId);
-      this.setGameSession(refreshed);
+      // A move may have started while this request was in flight, or the
+      // session may have moved on — re-check before applying the response.
+      if (this.isProcessing) return;
+      if (!this.session || refreshed.sessionId !== this.session.sessionId) return;
+
+      // Just update the countdown display; don't rebuild the whole board
+      // every second, since that's what was destroying in-progress flips.
+      this.session.timeRemainingSeconds = refreshed.timeRemainingSeconds;
+      const timerEl = document.getElementById("hud-timer");
+      if (timerEl) timerEl.textContent = UI.formatTime(refreshed.timeRemainingSeconds || 0);
+
       if (refreshed.status === "LOST") {
         this.stopTimer();
+        this.setGameSession(refreshed);
         setTimeout(() => UI.showResultsModal(refreshed, false), 250);
         UI.showToast("Time expired. Challenge over.", "error");
       }
