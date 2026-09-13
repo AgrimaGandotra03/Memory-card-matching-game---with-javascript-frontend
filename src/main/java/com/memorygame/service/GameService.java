@@ -456,16 +456,36 @@ public class GameService {
         session.setConcentrationScore(100.0);
         session.setAccuracyPercent(0.0);
         Instant restartedAt = Instant.now();
-        session.setPreviewEndsAt(restartedAt.plusSeconds(previewDurationSeconds));
         session.setFirstFlipAt(null);
         session.setMoveDeadlineAt(null);
         session.setMoveTimeLimitSeconds(initialMoveTimeLimit(
             session.getDifficulty(), session.isFocusMode()));
         session.setFirstFlippedCardId(-1);
         session.setStatus(GameStatus.ACTIVE);
-        session.setStartedAt(Instant.now());
+        session.setStartedAt(restartedAt);
         session.setPausedAt(null);
         session.setTotalPausedSeconds(0L);
+        session.setLevel(1);
+        session.setCumulativeScore(0);
+
+        // Re-run the mode strategy's own setup instead of hardcoding the
+        // classic-mode preview here. Previously this always set a plain
+        // previewEndsAt regardless of mode and never called initialize(),
+        // so restarting a Timed Challenge / Sequence Memory / Progressive
+        // session left it with stale mode-specific state (e.g. an old,
+        // already-elapsed sequence order and deadline from the finished
+        // round) — a fresh board with none of that state reset, which is
+        // why "Play Again" on Sequence Memory reused the old sequence
+        // answer key against a brand-new shuffled board and any click
+        // instantly mismatched.
+        GameMode mode = session.getMode();
+        GameModeStrategy modeStrategy = modeStrategyRegistry.forMode(mode);
+        session.setPreviewEndsAt(mode == GameMode.SEQUENCE_MEMORY
+            ? null : restartedAt.plusSeconds(previewDurationSeconds));
+        modeStrategy.initialize(session, freshBoard,
+            mode == GameMode.SEQUENCE_MEMORY
+                ? restartedAt : restartedAt.plusSeconds(previewDurationSeconds),
+            objectMapper);
 
         sessionRepository.save(session);
 
