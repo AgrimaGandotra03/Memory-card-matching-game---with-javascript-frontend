@@ -840,6 +840,7 @@ public class GameService {
             && session.getSequencePlaybackEndsAt() != null
             && Instant.now().isBefore(session.getSequencePlaybackEndsAt());
         resp.setSequencePlaybackActive(sequencePlaybackActive);
+        resp.setSequencePlaybackStartedAt(session.getSequencePlaybackStartedAt());
         resp.setSequencePlaybackEndsAt(session.getSequencePlaybackEndsAt());
         resp.setSequenceExpectedPosition(session.getSequencePosition());
         if (sequencePlaybackActive) {

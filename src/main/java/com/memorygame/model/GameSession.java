@@ -115,6 +115,9 @@ public class GameSession {
     @Column(columnDefinition = "TEXT")
     private String sequenceOrderJson;
 
+    /** Start of sequence playback — lets the client compute per-card reveal timing. */
+    private Instant sequencePlaybackStartedAt;
+
     /** End of sequence playback before replay input is accepted. */
     private Instant sequencePlaybackEndsAt;
 
@@ -277,6 +280,11 @@ public class GameSession {
 
     public String getSequenceOrderJson() { return sequenceOrderJson; }
     public void setSequenceOrderJson(String sequenceOrderJson) { this.sequenceOrderJson = sequenceOrderJson; }
+
+    public Instant getSequencePlaybackStartedAt() { return sequencePlaybackStartedAt; }
+    public void setSequencePlaybackStartedAt(Instant sequencePlaybackStartedAt) {
+        this.sequencePlaybackStartedAt = sequencePlaybackStartedAt;
+    }
 
     public Instant getSequencePlaybackEndsAt() { return sequencePlaybackEndsAt; }
     public void setSequencePlaybackEndsAt(Instant sequencePlaybackEndsAt) {

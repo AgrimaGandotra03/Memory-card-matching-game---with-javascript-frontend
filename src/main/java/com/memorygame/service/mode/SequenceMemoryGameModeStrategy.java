@@ -35,6 +35,7 @@ public class SequenceMemoryGameModeStrategy implements GameModeStrategy {
         order = new ArrayList<>(order.subList(0, sequenceLength));
         session.setSequenceOrderJson(toJson(order, objectMapper));
         session.setSequencePosition(0);
+        session.setSequencePlaybackStartedAt(startedAt);
         session.setSequencePlaybackEndsAt(startedAt.plusSeconds(sequenceLength));
     }
 

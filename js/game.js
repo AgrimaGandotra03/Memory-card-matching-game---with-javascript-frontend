@@ -3,6 +3,17 @@
  * Orchestrates API communication, UI rendering, board 3D card flips, and timer management.
  */
 
+const MODE_DESCRIPTIONS = {
+  CLASSIC:
+    "Classic: flip two cards at a time and find every matching pair. No timer pressure beyond your own move-time limit.",
+  TIMED_CHALLENGE:
+    "Timed Challenge: match every pair before the overall game clock runs out (60/90/120s for Easy/Medium/Hard). Run out of time and it's game over, however many pairs you've found.",
+  SEQUENCE_MEMORY:
+    "Sequence Memory: watch a set of cards light up one at a time in a specific order, then click them back in that exact same order once they've all gone face-down again. One wrong card ends the round — each level makes the sequence longer.",
+  PROGRESSIVE:
+    "Progressive: clear a board to automatically advance to the next of three levels, each harder than the last (more cards, less time), with your score carrying over across all three.",
+};
+
 const GameApp = {
   user: null,
   session: null,
@@ -13,6 +24,11 @@ const GameApp = {
   selectedDifficulty: "EASY",
   selectedTheme: "animals",
   selectedMode: "CLASSIC",
+
+  updateModeDescription(mode) {
+    const el = document.getElementById("mode-description");
+    if (el) el.textContent = MODE_DESCRIPTIONS[mode] || "";
+  },
 
   init() {
     AudioManager.init();
@@ -97,8 +113,10 @@ const GameApp = {
           .forEach((opt) => opt.classList.remove("selected"));
         el.classList.add("selected");
         this.selectedMode = el.dataset.mode;
+        this.updateModeDescription(this.selectedMode);
       });
     });
+    this.updateModeDescription(this.selectedMode);
 
     // Game Launchers
     document
@@ -519,11 +537,10 @@ const GameApp = {
       tile.className = "card-tile";
       tile.dataset.cardId = card.cardId;
 
-      if (
-        card.flipped ||
-        ((session.previewing || session.sequencePlaybackActive) &&
-          card.symbolKey)
-      )
+      // NOTE: sequencePlaybackActive is intentionally excluded here. Sequence
+      // mode reveals its cards one at a time via startSequencePlayback()'s
+      // own timed classList changes, not a blanket reveal-everything render.
+      if (card.flipped || (session.previewing && card.symbolKey))
         tile.classList.add("flipped");
       if (session.sequencePlaybackActive && session.sequencePlaybackCardIds) {
         const sequenceIndex = session.sequencePlaybackCardIds.indexOf(
@@ -900,34 +917,88 @@ const GameApp = {
     this.previewInterval = setInterval(update, 250);
   },
 
+  // Reveals the sequence cards ONE AT A TIME, in the correct order, so the
+  // player can actually learn what order to repeat. The previous version
+  // flipped every card face-up simultaneously for the whole playback window
+  // (via renderBoard's reveal-all logic) with only a near-instant 120ms
+  // CSS stagger — the order was never actually perceivable, so any click
+  // afterward was effectively a blind guess and almost always ended the
+  // game immediately.
   startSequencePlayback(session) {
     this.stopPreviewCountdown();
     const overlay = document.getElementById("preview-overlay");
     const countdown = document.getElementById("preview-countdown");
     const kicker = document.getElementById("preview-kicker");
-    if (!overlay || !countdown || !session.sequencePlaybackEndsAt) return;
+    const unit = document.getElementById("preview-unit");
+    const subtitle = document.getElementById("preview-subtitle");
+    const cardIds = session.sequencePlaybackCardIds || [];
+    if (!overlay || !countdown || !session.sequencePlaybackEndsAt || !cardIds.length) {
+      return;
+    }
+
     kicker.textContent = "Sequence playback";
+    if (unit) unit.textContent = "";
     overlay.hidden = false;
-    const update = async () => {
-      const remaining = Math.max(
-        0,
-        Math.ceil(
-          (Date.parse(session.sequencePlaybackEndsAt) - Date.now()) / 1000,
-        ),
+
+    // Make sure every card starts face-down before the sequence begins.
+    document.querySelectorAll(".card-tile").forEach((tile) => {
+      tile.classList.remove("flipped", "sequence-playback-step");
+    });
+
+    const totalMs = session.sequencePlaybackStartedAt
+      ? Date.parse(session.sequencePlaybackEndsAt) -
+        Date.parse(session.sequencePlaybackStartedAt)
+      : cardIds.length * 1000;
+    // Give each card a real, readable window instead of a 120ms flicker.
+    const stepMs = Math.max(600, totalMs / cardIds.length);
+
+    this.sequenceStepTimeouts = [];
+    cardIds.forEach((cardId, index) => {
+      const showAt = index * stepMs;
+      const hideAt = showAt + Math.min(stepMs - 150, stepMs * 0.75);
+
+      this.sequenceStepTimeouts.push(
+        setTimeout(() => {
+          const tile = document.querySelector(
+            `.card-tile[data-card-id="${cardId}"]`,
+          );
+          if (!tile) return;
+          tile.classList.add("flipped", "sequence-playback-step");
+          countdown.textContent = index + 1;
+          if (subtitle) {
+            subtitle.textContent = `Watch card ${index + 1} of ${cardIds.length}`;
+          }
+        }, showAt),
       );
-      countdown.textContent = remaining;
-      if (remaining === 0) {
+      this.sequenceStepTimeouts.push(
+        setTimeout(() => {
+          const tile = document.querySelector(
+            `.card-tile[data-card-id="${cardId}"]`,
+          );
+          if (!tile) return;
+          tile.classList.remove("flipped", "sequence-playback-step");
+        }, hideAt),
+      );
+    });
+
+    countdown.textContent = "1";
+    if (subtitle) subtitle.textContent = `Watch card 1 of ${cardIds.length}`;
+
+    this.sequenceStepTimeouts.push(
+      setTimeout(async () => {
         this.stopPreviewCountdown();
         try {
           const refreshed = await API.getSession(session.sessionId);
           this.setGameSession(refreshed);
+          UI.showToast(
+            "Now repeat the sequence — click the cards in the same order!",
+            "info",
+          );
         } catch (err) {
           UI.showToast("Sequence playback could not refresh.", "error");
         }
-      }
-    };
-    update();
-    this.previewInterval = setInterval(update, 250);
+      }, totalMs),
+    );
   },
 
   stopPreviewCountdown() {
@@ -935,11 +1006,19 @@ const GameApp = {
       clearInterval(this.previewInterval);
       this.previewInterval = null;
     }
+    if (this.sequenceStepTimeouts) {
+      this.sequenceStepTimeouts.forEach((id) => clearTimeout(id));
+      this.sequenceStepTimeouts = [];
+    }
     const overlay = document.getElementById("preview-overlay");
     if (overlay) {
       overlay.hidden = true;
       const kicker = document.getElementById("preview-kicker");
       if (kicker) kicker.textContent = "Memory preview";
+      const unit = document.getElementById("preview-unit");
+      if (unit) unit.textContent = "s";
+      const subtitle = document.getElementById("preview-subtitle");
+      if (subtitle) subtitle.textContent = "Study the board";
     }
   },
 

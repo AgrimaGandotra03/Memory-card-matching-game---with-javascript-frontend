@@ -462,6 +462,17 @@ select:focus {
   min-height: 2.2em;
 }
 
+.mode-description {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
 .focus-toggle {
   display: grid;
   grid-template-columns: auto auto;

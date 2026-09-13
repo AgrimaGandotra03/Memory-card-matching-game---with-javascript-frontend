@@ -37,6 +37,7 @@ public class GameSessionResponse {
     private int level;
     private int cumulativeScore;
     private boolean sequencePlaybackActive;
+    private Instant sequencePlaybackStartedAt;
     private Instant sequencePlaybackEndsAt;
     private List<Integer> sequencePlaybackCardIds;
     private int sequenceExpectedPosition;
@@ -156,6 +157,11 @@ public class GameSessionResponse {
     public boolean isSequencePlaybackActive() { return sequencePlaybackActive; }
     public void setSequencePlaybackActive(boolean sequencePlaybackActive) {
         this.sequencePlaybackActive = sequencePlaybackActive;
+    }
+
+    public Instant getSequencePlaybackStartedAt() { return sequencePlaybackStartedAt; }
+    public void setSequencePlaybackStartedAt(Instant sequencePlaybackStartedAt) {
+        this.sequencePlaybackStartedAt = sequencePlaybackStartedAt;
     }
 
     public Instant getSequencePlaybackEndsAt() { return sequencePlaybackEndsAt; }
