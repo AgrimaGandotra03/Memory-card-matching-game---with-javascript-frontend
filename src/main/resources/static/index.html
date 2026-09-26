@@ -34,6 +34,13 @@
           >
             🔇 Music: OFF
           </button>
+          <button
+            id="btn-nav-workout"
+            class="btn btn-secondary"
+            title="Daily Brain Workout"
+          >
+            🧠 Brain Workout
+          </button>
 
           <div
             id="user-badge-container"
@@ -283,6 +290,101 @@
             >
               ▶ Resume Saved Game
             </button>
+            <button
+              id="btn-open-workout"
+              class="btn btn-secondary"
+              style="font-size: 1.1rem; padding: 14px 28px"
+            >
+              🧠 Daily Brain Workout
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <!-- Screen: Daily Brain Workout -->
+      <main id="workout-screen" class="screen">
+        <div class="glass-panel workout-panel">
+          <div class="workout-header-row">
+            <h1 class="workout-title">🧠 Daily Brain Workout</h1>
+            <button id="btn-workout-back" class="btn btn-secondary">
+              ← Back to Menu
+            </button>
+          </div>
+
+          <!-- Intro card: today's focus -->
+          <div id="workout-intro" class="workout-card">
+            <div class="workout-intro-kicker" id="workout-kicker">
+              Today's Focus
+            </div>
+            <div class="workout-skill-name" id="workout-skill-name">
+              Loading…
+            </div>
+            <p class="workout-description" id="workout-description"></p>
+            <div class="workout-meta-row">
+              <span class="workout-meta-pill"
+                >Difficulty: <span id="workout-stars">⭐</span></span
+              >
+              <span class="workout-meta-pill"
+                >⏱ <span id="workout-est-minutes">–</span> min</span
+              >
+              <span class="workout-meta-pill" id="workout-streak-pill"
+                >🔥 0-day streak</span
+              >
+            </div>
+            <div id="workout-status" class="workout-status"></div>
+            <div class="workout-actions">
+              <button id="btn-start-workout" class="btn btn-primary">
+                ▶ Start Workout
+              </button>
+              <button id="btn-view-progress" class="btn btn-secondary">
+                📈 View Progress
+              </button>
+            </div>
+          </div>
+
+          <!-- Active mini-game area, rendered dynamically by workout.js -->
+          <div id="workout-play-area" class="workout-play-area" hidden></div>
+
+          <!-- Completion summary -->
+          <div id="workout-results" class="workout-card workout-results" hidden>
+            <div class="workout-results-trophy">🎉</div>
+            <h2 class="workout-results-title">Workout Complete!</h2>
+            <div class="workout-results-grid">
+              <div class="workout-result-stat">
+                <div class="workout-result-label">Score</div>
+                <div id="workout-result-score" class="workout-result-value">
+                  0
+                </div>
+              </div>
+              <div class="workout-result-stat">
+                <div class="workout-result-label">Accuracy</div>
+                <div id="workout-result-accuracy" class="workout-result-value">
+                  0%
+                </div>
+              </div>
+              <div class="workout-result-stat">
+                <div class="workout-result-label">Time</div>
+                <div id="workout-result-time" class="workout-result-value">
+                  00:00
+                </div>
+              </div>
+            </div>
+            <p id="workout-result-message" class="workout-result-message"></p>
+            <div class="workout-actions">
+              <button id="btn-workout-retry" class="btn btn-primary">
+                🔄 Try Again
+              </button>
+              <button id="btn-workout-done" class="btn btn-secondary">
+                🏠 Main Menu
+              </button>
+            </div>
+          </div>
+
+          <!-- Progress view -->
+          <div id="workout-progress" class="workout-card" hidden>
+            <h3 class="workout-progress-title">Your Training Progress</h3>
+            <div id="workout-progress-summary" class="workout-meta-row"></div>
+            <ul id="workout-progress-list" class="workout-progress-list"></ul>
           </div>
         </div>
       </main>
@@ -475,13 +577,6 @@
 
           <div class="engagement-grid">
             <section class="engagement-panel">
-              <h3>Daily Brain Challenge</h3>
-              <p id="daily-challenge-status">Loading today's challenge...</p>
-              <button id="btn-daily-challenge" class="btn btn-accent">
-                Play today's challenge
-              </button>
-            </section>
-            <section class="engagement-panel">
               <h3>Recommendations</h3>
               <ul id="recommendation-list" class="recommendation-list"></ul>
             </section>
@@ -615,5 +710,6 @@
     <script src="js/audio.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/game.js"></script>
+    <script src="js/workout.js"></script>
   </body>
 </html>

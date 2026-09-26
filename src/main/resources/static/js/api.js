@@ -158,16 +158,29 @@ const API = {
     return this.request(`/api/performance/${userId}`);
   },
 
-  async getDailyChallenge(userId) {
-    return this.request(`/api/engagement/daily/${userId}`);
-  },
-
   async getBadges(userId) {
     return this.request(`/api/engagement/badges/${userId}`);
   },
 
   async getRecommendations(userId) {
     return this.request(`/api/engagement/recommendations/${userId}`);
+  },
+
+  // ── Daily Brain Workout Endpoints ────────────────────────────────────────
+
+  async getDailyWorkout(userId) {
+    return this.request(`/api/workouts/${userId}/today`);
+  },
+
+  async submitWorkoutAttempt(userId, payload) {
+    return this.request(`/api/workouts/${userId}/submit`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getWorkoutProgress(userId) {
+    return this.request(`/api/workouts/${userId}/progress`);
   },
 };
 

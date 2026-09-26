@@ -70,6 +70,15 @@ const GameApp = {
     document
       .getElementById("btn-logout")
       ?.addEventListener("click", () => this.logout());
+    document
+      .getElementById("btn-nav-workout")
+      ?.addEventListener("click", () => window.DailyWorkout?.open());
+    document
+      .getElementById("btn-open-workout")
+      ?.addEventListener("click", () => window.DailyWorkout?.open());
+    document
+      .getElementById("btn-workout-back")
+      ?.addEventListener("click", () => UI.showScreen("menu"));
 
     // Audio controls
     document
@@ -122,9 +131,6 @@ const GameApp = {
     document
       .getElementById("btn-start-game")
       ?.addEventListener("click", () => this.startNewGame());
-    document
-      .getElementById("btn-daily-challenge")
-      ?.addEventListener("click", () => this.startDailyChallenge());
     document
       .getElementById("btn-resume-game")
       ?.addEventListener("click", () => this.loadActiveGame());
@@ -396,16 +402,10 @@ const GameApp = {
 
   async loadEngagementDashboard() {
     try {
-      const [daily, badges, recommendations] = await Promise.all([
-        API.getDailyChallenge(this.user.userId),
+      const [badges, recommendations] = await Promise.all([
         API.getBadges(this.user.userId),
         API.getRecommendations(this.user.userId),
       ]);
-      const dailyEl = document.getElementById("daily-challenge-status");
-      if (dailyEl)
-        dailyEl.textContent = daily.completed
-          ? `Completed · ${daily.completionScore} pts`
-          : "Ready to play";
       const badgesEl = document.getElementById("badge-list");
       if (badgesEl)
         badgesEl.innerHTML = badges.length
@@ -465,27 +465,6 @@ const GameApp = {
       UI.showToast(session.message || "Game started! Good luck.", "info");
     } catch (err) {
       UI.showToast("Could not start game: " + err.message, "error");
-    }
-  },
-
-  async startDailyChallenge() {
-    if (!this.user) return;
-    try {
-      const date = new Date().toISOString().slice(0, 10);
-      const session = await API.startGame(
-        this.user.userId,
-        "EASY",
-        "animals",
-        false,
-        "CLASSIC",
-        true,
-        date,
-      );
-      this.setGameSession(session);
-      UI.showScreen("game");
-      UI.showToast("Today's fixed challenge is ready.", "info");
-    } catch (err) {
-      UI.showToast("Could not start daily challenge: " + err.message, "error");
     }
   },
 

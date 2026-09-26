@@ -17,7 +17,8 @@ public class EngagementService {
     private static final Map<String, String[]> BADGES = Map.of(
             "TEN_STREAK", new String[]{"10-Streak", "Complete a session with a 10-match streak."},
             "SUB_TWO_MINUTES", new String[]{"Speed Clear", "Complete a session in under two minutes."},
-            "DAILY_SEVEN", new String[]{"Daily Devotee", "Complete daily challenges on seven consecutive days."}
+            "DAILY_SEVEN", new String[]{"Daily Devotee", "Complete daily challenges on seven consecutive days."},
+            "WORKOUT_STREAK_5", new String[]{"Brain Streak", "Complete a Daily Brain Workout five days in a row."}
     );
 
     private final UserRepository userRepository;
